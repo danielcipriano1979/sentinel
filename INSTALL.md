@@ -79,16 +79,18 @@ npm install
 
 ## Step 7: Configure Environment Variables
 
+**IMPORTANT:** The `.env` file MUST be created before running the application.
+
 Create a `.env` file in the project root:
 
 ```bash
 nano .env
 ```
 
-Add the following content (adjust values as needed):
+Add the following content (replace `your_secure_password` with the password you set in Step 4):
 
 ```env
-# Database Configuration
+# Database Configuration (REQUIRED)
 DATABASE_URL=postgresql://sentinel:your_secure_password@localhost:5432/sentinel_db
 PGHOST=localhost
 PGPORT=5432
@@ -96,7 +98,7 @@ PGUSER=sentinel
 PGPASSWORD=your_secure_password
 PGDATABASE=sentinel_db
 
-# Session Configuration
+# Session Configuration (REQUIRED)
 SESSION_SECRET=generate_a_random_32_character_string_here
 
 # Server Configuration (optional)
@@ -104,10 +106,20 @@ PORT=5000
 NODE_ENV=production
 ```
 
-To generate a random session secret:
+Generate a random session secret and add it to your `.env`:
 ```bash
+# Generate secret
 openssl rand -hex 32
+
+# Copy the output and paste it as the SESSION_SECRET value in .env
 ```
+
+**Verify your .env file exists:**
+```bash
+cat .env
+```
+
+You should see all your configuration values displayed.
 
 ## Step 8: Initialize Database
 
@@ -242,6 +254,27 @@ sudo ufw enable
 3. Create your first organization to start monitoring
 
 ## Troubleshooting
+
+### Error: DATABASE_URL must be set
+
+This error means the `.env` file is missing or not in the correct location.
+
+**Solution:**
+```bash
+# Make sure you're in the project root directory
+cd /path/to/sentinel
+
+# Check if .env file exists
+ls -la .env
+
+# If it doesn't exist, create it (see Step 7 above)
+nano .env
+
+# Verify the file has correct content
+cat .env
+```
+
+The `.env` file must be in the same directory as `package.json`.
 
 ### Database Connection Issues
 ```bash
