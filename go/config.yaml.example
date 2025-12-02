@@ -1,0 +1,21 @@
+# Sentinel Agent Configuration
+
+# API endpoint of your Sentinel server (required)
+# Example: http://your-server.com:5000 or https://sentinel.example.com
+api_endpoint: "http://your-sentinel-server:5000"
+
+# Organization slug from your Sentinel dashboard (required)
+# This is the unique identifier for your organization
+organization_slug: "your-org-slug"
+
+# API key for authentication (optional, but recommended for security)
+# Generate this from your Sentinel dashboard settings
+api_key: ""
+
+# Heartbeat interval in seconds (default: 10)
+# How often the agent sends metrics to the server
+interval: 10
+
+# Path to store the unique host ID (default: /var/lib/sentinel-agent/host-id)
+# This ID persists across reinstalls based on MAC address
+host_id_file: "/var/lib/sentinel-agent/host-id"

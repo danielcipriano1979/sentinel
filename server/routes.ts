@@ -341,6 +341,179 @@ export async function registerRoutes(
     }
   });
 
+  // Go Agent heartbeat endpoint (uses organizationSlug in body)
+  app.post("/api/v2/heartbeat", async (req, res) => {
+    try {
+      const { organizationSlug, hostId, heartbeat } = req.body;
+
+      if (!organizationSlug) {
+        return res.status(400).json({ error: "organizationSlug is required" });
+      }
+
+      if (!hostId) {
+        return res.status(400).json({ error: "hostId is required" });
+      }
+
+      // Find organization by slug
+      const org = await storage.getOrganizationBySlug(organizationSlug);
+      if (!org) {
+        return res.status(404).json({ error: "Organization not found" });
+      }
+
+      const orgId = org.id;
+
+      // Extract network info
+      const networkInfo = heartbeat.network || {};
+      const primaryIP = networkInfo.primary_ip || "";
+      const primaryMAC = networkInfo.primary_mac || "";
+
+      // Find existing host by hostId or hostname
+      let host = await storage.getHost(hostId);
+      
+      if (!host) {
+        // Try to find by hostname
+        host = await storage.getHostByHostname(orgId, heartbeat.hostname);
+      }
+
+      if (!host) {
+        // Create new host
+        host = await storage.createHost({
+          organizationId: orgId,
+          hostname: heartbeat.hostname,
+          displayName: heartbeat.hostname,
+          ipAddress: primaryIP,
+          os: "linux",
+          architecture: "x86_64",
+          tags: [],
+          customFields: {
+            host_id: hostId,
+            mac_address: primaryMAC,
+            network_interfaces: networkInfo.interfaces || [],
+          },
+        });
+      } else {
+        // Update existing host
+        await storage.updateHost(host.id, {
+          ipAddress: primaryIP,
+          lastSeenAt: new Date(),
+          customFields: {
+            ...(host.customFields || {}),
+            mac_address: primaryMAC,
+            network_interfaces: networkInfo.interfaces || [],
+          },
+        });
+      }
+
+      // Upsert agent info
+      await storage.upsertAgent({
+        hostId: host.id,
+        version: heartbeat.agentVersion || "unknown",
+        status: heartbeat.agentStatus || "running",
+        pid: 0,
+        startedAt: new Date(),
+        lastHeartbeat: new Date(),
+      });
+
+      // Store metrics in memory (map Go agent fields to schema)
+      const metrics: HostMetrics = {
+        hostId: host.id,
+        timestamp: Date.now(),
+        cpu: {
+          usage: heartbeat.metrics?.cpu?.usage || 0,
+          cores: heartbeat.metrics?.cpu?.cores || 1,
+          loadAvg: [
+            heartbeat.metrics?.cpu?.loadAvg1 || 0,
+            heartbeat.metrics?.cpu?.loadAvg5 || 0,
+            heartbeat.metrics?.cpu?.loadAvg15 || 0,
+          ],
+        },
+        memory: {
+          total: heartbeat.metrics?.memory?.total || 0,
+          used: heartbeat.metrics?.memory?.used || 0,
+          free: heartbeat.metrics?.memory?.available || 0,
+          usagePercent: heartbeat.metrics?.memory?.usagePercent || 0,
+        },
+        disk: {
+          total: heartbeat.metrics?.disk?.total || 0,
+          used: heartbeat.metrics?.disk?.used || 0,
+          free: heartbeat.metrics?.disk?.available || 0,
+          usagePercent: heartbeat.metrics?.disk?.usagePercent || 0,
+        },
+        network: {
+          bytesIn: 0,
+          bytesOut: 0,
+          packetsIn: 0,
+          packetsOut: 0,
+        },
+      };
+      metricsStore.addMetrics(host.id, metrics);
+
+      // Evaluate alert rules
+      try {
+        const [alertRulesList, existingActiveAlerts] = await Promise.all([
+          storage.getAlertRules(orgId),
+          storage.getActiveAlerts(orgId),
+        ]);
+
+        for (const rule of alertRulesList) {
+          if (!rule.enabled) continue;
+
+          let metricValue = 0;
+          switch (rule.metricType) {
+            case "cpu":
+              metricValue = metrics.cpu.usage;
+              break;
+            case "memory":
+              metricValue = metrics.memory.usagePercent;
+              break;
+            case "disk":
+              metricValue = metrics.disk.usagePercent;
+              break;
+          }
+
+          let shouldAlert = false;
+          switch (rule.condition) {
+            case "gt":
+              shouldAlert = metricValue > rule.threshold;
+              break;
+            case "lt":
+              shouldAlert = metricValue < rule.threshold;
+              break;
+            case "eq":
+              shouldAlert = metricValue === rule.threshold;
+              break;
+          }
+
+          if (shouldAlert) {
+            const hasActive = existingActiveAlerts.some(
+              (a) => a.alertRuleId === rule.id && a.hostId === host!.id
+            );
+
+            if (!hasActive) {
+              await storage.createAlert({
+                organizationId: orgId,
+                alertRuleId: rule.id,
+                hostId: host!.id,
+                title: rule.name,
+                message: `${rule.metricType.toUpperCase()} is ${metricValue.toFixed(1)}% (threshold: ${rule.threshold}%)`,
+                severity: rule.severity,
+                status: "active",
+                metricValue: Math.round(metricValue),
+              });
+            }
+          }
+        }
+      } catch (alertError) {
+        console.error("Error evaluating alerts:", alertError);
+      }
+
+      res.json({ success: true, hostId: host.id });
+    } catch (error) {
+      console.error("Error processing v2 heartbeat:", error);
+      res.status(500).json({ error: "Failed to process heartbeat" });
+    }
+  });
+
   // ==================== Roadmap ====================
   
   app.get("/api/roadmap", async (req, res) => {
