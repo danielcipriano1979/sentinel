@@ -109,7 +109,7 @@ export async function registerRoutes(
         alerts: activeAlerts.length,
       };
 
-      res.json({ hosts, metrics, stats });
+      res.json({ hosts, metrics, alerts: activeAlerts, stats });
     } catch (error) {
       console.error("Error fetching dashboard:", error);
       res.status(500).json({ error: "Failed to fetch dashboard data" });
@@ -127,6 +127,7 @@ export async function registerRoutes(
 
       const hosts = await storage.getHosts(orgId);
       const allMetrics = metricsStore.getAllLatestMetrics();
+      const activeAlerts = await storage.getActiveAlerts(orgId);
       
       // Filter metrics to only include hosts that belong to this organization
       const hostIds = new Set(hosts.map(h => h.id));
@@ -137,7 +138,7 @@ export async function registerRoutes(
         }
       }
 
-      res.json({ hosts, metrics });
+      res.json({ hosts, metrics, alerts: activeAlerts });
     } catch (error) {
       console.error("Error fetching hosts:", error);
       res.status(500).json({ error: "Failed to fetch hosts" });

@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { StatusBadge, getHostStatus } from "./status-badge";
 import { ResourceBar } from "./metric-card";
 import { cn } from "@/lib/utils";
-import { Server, ExternalLink, MoreVertical, Clock, Tag } from "lucide-react";
+import { Server, ExternalLink, MoreVertical, Clock, Tag, AlertCircle, AlertTriangle, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,15 +19,24 @@ import { Link } from "wouter";
 interface HostCardProps {
   host: HostWithAgent;
   metrics?: HostMetrics;
+  alertSeverity?: "critical" | "warning" | "info" | null;
   className?: string;
 }
 
-export function HostCard({ host, metrics, className }: HostCardProps) {
+export function HostCard({ host, metrics, alertSeverity, className }: HostCardProps) {
   const status = getHostStatus(host.lastSeenAt, host.agent?.status);
   const displayName = host.displayName || host.hostname;
 
+  const alertBorderClass = alertSeverity === "critical" 
+    ? "border-l-4 border-l-red-500" 
+    : alertSeverity === "warning" 
+    ? "border-l-4 border-l-amber-500" 
+    : alertSeverity === "info"
+    ? "border-l-4 border-l-blue-500"
+    : "";
+
   return (
-    <Card className={cn("overflow-visible hover-elevate transition-all", className)}>
+    <Card className={cn("overflow-visible hover-elevate transition-all", alertBorderClass, className)}>
       <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-3">
         <div className="flex items-start gap-3 min-w-0 flex-1">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary flex-shrink-0">
@@ -43,6 +53,26 @@ export function HostCard({ host, metrics, className }: HostCardProps) {
                 </span>
               </Link>
               <StatusBadge status={status} size="sm" />
+              {alertSeverity && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-help">
+                      {alertSeverity === "critical" && (
+                        <AlertCircle className="h-4 w-4 text-red-500" />
+                      )}
+                      {alertSeverity === "warning" && (
+                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                      )}
+                      {alertSeverity === "info" && (
+                        <Info className="h-4 w-4 text-blue-500" />
+                      )}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="capitalize">{alertSeverity} alert active</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
             <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">
               {host.hostname}

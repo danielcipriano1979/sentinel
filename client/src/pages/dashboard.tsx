@@ -9,17 +9,26 @@ import { getHostStatus } from "@/components/status-badge";
 import { Server, Bot, Cpu, AlertTriangle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import type { HostWithAgent, HostMetrics } from "@shared/schema";
+import type { HostWithAgent, HostMetrics, Alert } from "@shared/schema";
 
 interface DashboardData {
   hosts: HostWithAgent[];
   metrics: Record<string, HostMetrics>;
+  alerts: Alert[];
   stats: {
     totalHosts: number;
     activeAgents: number;
     avgCpu: number;
     alerts: number;
   };
+}
+
+function getHostAlertSeverity(hostId: string, alerts: Alert[]): "critical" | "warning" | "info" | null {
+  const hostAlerts = alerts.filter(a => a.hostId === hostId && (a.status === "active" || a.status === "acknowledged"));
+  if (hostAlerts.some(a => a.severity === "critical")) return "critical";
+  if (hostAlerts.some(a => a.severity === "warning")) return "warning";
+  if (hostAlerts.some(a => a.severity === "info")) return "info";
+  return null;
 }
 
 export default function Dashboard() {
@@ -67,9 +76,10 @@ export default function Dashboard() {
     );
   }
 
-  const { hosts = [], metrics = {}, stats } = data || {
+  const { hosts = [], metrics = {}, alerts = [], stats } = data || {
     hosts: [],
     metrics: {},
+    alerts: [],
     stats: { totalHosts: 0, activeAgents: 0, avgCpu: 0, alerts: 0 },
   };
 
@@ -144,6 +154,7 @@ export default function Dashboard() {
                   key={host.id}
                   host={host}
                   metrics={metrics[host.id]}
+                  alertSeverity={getHostAlertSeverity(host.id, alerts)}
                 />
               ))}
             </div>

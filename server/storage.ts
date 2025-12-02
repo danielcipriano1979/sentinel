@@ -27,7 +27,7 @@ import {
   type HostMetrics,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Organizations
@@ -318,7 +318,12 @@ export class DatabaseStorage implements IStorage {
     return db
       .select()
       .from(alerts)
-      .where(and(eq(alerts.organizationId, organizationId), eq(alerts.status, "active")))
+      .where(
+        and(
+          eq(alerts.organizationId, organizationId),
+          sql`${alerts.status} IN ('active', 'acknowledged')`
+        )
+      )
       .orderBy(desc(alerts.triggeredAt));
   }
 

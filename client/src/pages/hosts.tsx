@@ -17,6 +17,9 @@ import {
   Clock,
   MoreVertical,
   ExternalLink,
+  AlertCircle,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import {
   Table,
@@ -42,7 +45,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "wouter";
-import type { HostWithAgent, HostMetrics } from "@shared/schema";
+import type { HostWithAgent, HostMetrics, Alert } from "@shared/schema";
 import { cn } from "@/lib/utils";
 
 type ViewMode = "grid" | "list";
@@ -51,6 +54,15 @@ type StatusFilter = "all" | "healthy" | "warning" | "critical" | "offline";
 interface HostsData {
   hosts: HostWithAgent[];
   metrics: Record<string, HostMetrics>;
+  alerts: Alert[];
+}
+
+function getHostAlertSeverity(hostId: string, alerts: Alert[]): "critical" | "warning" | "info" | null {
+  const hostAlerts = alerts.filter(a => a.hostId === hostId && (a.status === "active" || a.status === "acknowledged"));
+  if (hostAlerts.some(a => a.severity === "critical")) return "critical";
+  if (hostAlerts.some(a => a.severity === "warning")) return "warning";
+  if (hostAlerts.some(a => a.severity === "info")) return "info";
+  return null;
 }
 
 export default function Hosts() {
@@ -70,7 +82,7 @@ export default function Hosts() {
     refetchInterval: 5000,
   });
 
-  const { hosts = [], metrics = {} } = data || { hosts: [], metrics: {} };
+  const { hosts = [], metrics = {}, alerts = [] } = data || { hosts: [], metrics: {}, alerts: [] };
 
   const filteredHosts = hosts.filter((host) => {
     const matchesSearch =
@@ -212,7 +224,12 @@ export default function Hosts() {
       ) : viewMode === "grid" ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredHosts.map((host) => (
-            <HostCard key={host.id} host={host} metrics={metrics[host.id]} />
+            <HostCard 
+              key={host.id} 
+              host={host} 
+              metrics={metrics[host.id]} 
+              alertSeverity={getHostAlertSeverity(host.id, alerts)}
+            />
           ))}
         </div>
       ) : (
@@ -234,11 +251,31 @@ export default function Hosts() {
               {filteredHosts.map((host) => {
                 const status = getHostStatus(host.lastSeenAt, host.agent?.status);
                 const hostMetrics = metrics[host.id];
+                const alertSeverity = getHostAlertSeverity(host.id, alerts);
 
                 return (
-                  <TableRow key={host.id} data-testid={`row-host-${host.id}`}>
+                  <TableRow 
+                    key={host.id} 
+                    data-testid={`row-host-${host.id}`}
+                    className={cn(
+                      alertSeverity === "critical" && "border-l-4 border-l-red-500",
+                      alertSeverity === "warning" && "border-l-4 border-l-amber-500",
+                      alertSeverity === "info" && "border-l-4 border-l-blue-500"
+                    )}
+                  >
                     <TableCell>
-                      <StatusBadge status={status} size="sm" />
+                      <div className="flex items-center gap-2">
+                        <StatusBadge status={status} size="sm" />
+                        {alertSeverity === "critical" && (
+                          <AlertCircle className="h-4 w-4 text-red-500" />
+                        )}
+                        {alertSeverity === "warning" && (
+                          <AlertTriangle className="h-4 w-4 text-amber-500" />
+                        )}
+                        {alertSeverity === "info" && (
+                          <Info className="h-4 w-4 text-blue-500" />
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div>
