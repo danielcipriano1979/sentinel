@@ -121,12 +121,23 @@ func (c *APIClient) SendHeartbeat(heartbeat Heartbeat) error {
         }
 
         if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-                return fmt.Errorf("server returned status %d: %s", resp.StatusCode, string(body))
+                // Show first 200 chars of response for debugging
+                preview := string(body)
+                if len(preview) > 200 {
+                        preview = preview[:200] + "..."
+                }
+                return fmt.Errorf("server returned status %d: %s", resp.StatusCode, preview)
+        }
+
+        // Check if response is JSON (not HTML)
+        contentType := resp.Header.Get("Content-Type")
+        if len(body) > 0 && body[0] == '<' {
+                return fmt.Errorf("server returned HTML instead of JSON. Check your api_endpoint URL. Response: %.100s...", string(body))
         }
 
         var response HeartbeatResponse
         if err := json.Unmarshal(body, &response); err != nil {
-                return fmt.Errorf("failed to parse response: %w", err)
+                return fmt.Errorf("failed to parse response (Content-Type: %s): %w. Body: %.100s", contentType, err, string(body))
         }
 
         if !response.Success {
