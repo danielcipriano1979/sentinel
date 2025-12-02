@@ -17,6 +17,7 @@ import {
   LayoutDashboard,
   Server,
   Bot,
+  Bell,
   Settings,
   Map,
   Activity,
@@ -39,6 +40,11 @@ const mainNavItems = [
     title: "Agents",
     url: "/agents",
     icon: Bot,
+  },
+  {
+    title: "Alerts",
+    url: "/alerts",
+    icon: Bell,
   },
 ];
 

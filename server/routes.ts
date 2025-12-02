@@ -4,6 +4,8 @@ import { storage, metricsStore } from "./storage";
 import {
   insertOrganizationSchema,
   insertHostSchema,
+  insertAlertRuleSchema,
+  insertNotificationChannelSchema,
   type AgentHeartbeat,
   type HostMetrics,
 } from "@shared/schema";
@@ -71,6 +73,7 @@ export async function registerRoutes(
 
       const hosts = await storage.getHosts(orgId);
       const allMetrics = metricsStore.getAllLatestMetrics();
+      const activeAlerts = await storage.getActiveAlerts(orgId);
       
       // Filter metrics to only include hosts that belong to this organization
       const hostIds = new Set(hosts.map(h => h.id));
@@ -103,7 +106,7 @@ export async function registerRoutes(
         totalHosts: hosts.length,
         activeAgents,
         avgCpu: cpuCount > 0 ? totalCpu / cpuCount : 0,
-        alerts: 0,
+        alerts: activeAlerts.length,
       };
 
       res.json({ hosts, metrics, stats });
@@ -268,6 +271,69 @@ export async function registerRoutes(
       };
       metricsStore.addMetrics(host.id, metrics);
 
+      // Evaluate alert rules and create alerts if thresholds are exceeded
+      try {
+        const [alertRulesList, existingActiveAlerts] = await Promise.all([
+          storage.getAlertRules(orgId),
+          storage.getActiveAlerts(orgId),
+        ]);
+        
+        for (const rule of alertRulesList) {
+          if (!rule.enabled) continue;
+          
+          let metricValue = 0;
+          switch (rule.metricType) {
+            case "cpu":
+              metricValue = metrics.cpu.usage;
+              break;
+            case "memory":
+              metricValue = metrics.memory.usagePercent;
+              break;
+            case "disk":
+              metricValue = metrics.disk.usagePercent;
+              break;
+            case "agent_status":
+              metricValue = heartbeat.agentStatus === "running" ? 1 : 0;
+              break;
+          }
+
+          let shouldAlert = false;
+          switch (rule.condition) {
+            case "gt":
+              shouldAlert = metricValue > rule.threshold;
+              break;
+            case "lt":
+              shouldAlert = metricValue < rule.threshold;
+              break;
+            case "eq":
+              shouldAlert = metricValue === rule.threshold;
+              break;
+          }
+
+          if (shouldAlert) {
+            // Check if there's already an active alert for this rule/host using cached list
+            const hasActive = existingActiveAlerts.some(
+              a => a.alertRuleId === rule.id && a.hostId === host.id
+            );
+            
+            if (!hasActive) {
+              await storage.createAlert({
+                organizationId: orgId,
+                alertRuleId: rule.id,
+                hostId: host.id,
+                title: rule.name,
+                message: `${rule.metricType.toUpperCase()} is ${metricValue}% (threshold: ${rule.threshold}%)`,
+                severity: rule.severity,
+                status: "active",
+                metricValue: Math.round(metricValue),
+              });
+            }
+          }
+        }
+      } catch (alertError) {
+        console.error("Error evaluating alerts:", alertError);
+      }
+
       res.json({ success: true, hostId: host.id });
     } catch (error) {
       console.error("Error processing heartbeat:", error);
@@ -301,6 +367,281 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching custom fields:", error);
       res.status(500).json({ error: "Failed to fetch custom field definitions" });
+    }
+  });
+
+  app.post("/api/custom-fields", async (req, res) => {
+    try {
+      const { organizationId, name, fieldType } = req.body;
+      if (!organizationId || !name) {
+        return res.status(400).json({ error: "Organization ID and name required" });
+      }
+
+      const definition = await storage.createCustomFieldDefinition({
+        organizationId,
+        name,
+        key: name.toLowerCase().replace(/\s+/g, "_"),
+        type: fieldType || "text",
+      });
+      res.status(201).json(definition);
+    } catch (error) {
+      console.error("Error creating custom field:", error);
+      res.status(500).json({ error: "Failed to create custom field definition" });
+    }
+  });
+
+  // ==================== Alert Rules ====================
+  
+  app.get("/api/alert-rules", async (req, res) => {
+    try {
+      const orgId = req.query.orgId as string;
+      if (!orgId) {
+        return res.status(400).json({ error: "Organization ID required" });
+      }
+
+      const rules = await storage.getAlertRules(orgId);
+      res.json(rules);
+    } catch (error) {
+      console.error("Error fetching alert rules:", error);
+      res.status(500).json({ error: "Failed to fetch alert rules" });
+    }
+  });
+
+  app.post("/api/alert-rules", async (req, res) => {
+    try {
+      // Use orgId from query parameter, not body (prevents cross-tenant creation)
+      const orgId = req.query.orgId as string;
+      if (!orgId) {
+        return res.status(400).json({ error: "Organization ID required in query parameter" });
+      }
+      
+      // Validate organization exists
+      const org = await storage.getOrganization(orgId);
+      if (!org) {
+        return res.status(400).json({ error: "Invalid organization ID" });
+      }
+      
+      // Override organizationId from body with verified query param
+      const parsed = insertAlertRuleSchema.parse({ ...req.body, organizationId: orgId });
+      
+      const rule = await storage.createAlertRule(parsed);
+      res.status(201).json(rule);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error creating alert rule:", error);
+      res.status(500).json({ error: "Failed to create alert rule" });
+    }
+  });
+
+  app.patch("/api/alert-rules/:id", async (req, res) => {
+    try {
+      const orgId = req.query.orgId as string;
+      if (!orgId) {
+        return res.status(400).json({ error: "Organization ID required" });
+      }
+      
+      // Verify ownership before updating
+      const existing = await storage.getAlertRule(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Alert rule not found" });
+      }
+      if (existing.organizationId !== orgId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const rule = await storage.updateAlertRule(req.params.id, req.body);
+      res.json(rule);
+    } catch (error) {
+      console.error("Error updating alert rule:", error);
+      res.status(500).json({ error: "Failed to update alert rule" });
+    }
+  });
+
+  app.delete("/api/alert-rules/:id", async (req, res) => {
+    try {
+      const orgId = req.query.orgId as string;
+      if (!orgId) {
+        return res.status(400).json({ error: "Organization ID required" });
+      }
+      
+      // Verify ownership before deleting
+      const existing = await storage.getAlertRule(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Alert rule not found" });
+      }
+      if (existing.organizationId !== orgId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      await storage.deleteAlertRule(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting alert rule:", error);
+      res.status(500).json({ error: "Failed to delete alert rule" });
+    }
+  });
+
+  // ==================== Notification Channels ====================
+  
+  app.get("/api/notification-channels", async (req, res) => {
+    try {
+      const orgId = req.query.orgId as string;
+      if (!orgId) {
+        return res.status(400).json({ error: "Organization ID required" });
+      }
+
+      const channels = await storage.getNotificationChannels(orgId);
+      res.json(channels);
+    } catch (error) {
+      console.error("Error fetching notification channels:", error);
+      res.status(500).json({ error: "Failed to fetch notification channels" });
+    }
+  });
+
+  app.post("/api/notification-channels", async (req, res) => {
+    try {
+      // Use orgId from query parameter, not body (prevents cross-tenant creation)
+      const orgId = req.query.orgId as string;
+      if (!orgId) {
+        return res.status(400).json({ error: "Organization ID required in query parameter" });
+      }
+      
+      // Validate organization exists
+      const org = await storage.getOrganization(orgId);
+      if (!org) {
+        return res.status(400).json({ error: "Invalid organization ID" });
+      }
+      
+      // Override organizationId from body with verified query param
+      const parsed = insertNotificationChannelSchema.parse({ ...req.body, organizationId: orgId });
+      
+      const channel = await storage.createNotificationChannel(parsed);
+      res.status(201).json(channel);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Error creating notification channel:", error);
+      res.status(500).json({ error: "Failed to create notification channel" });
+    }
+  });
+
+  app.patch("/api/notification-channels/:id", async (req, res) => {
+    try {
+      const orgId = req.query.orgId as string;
+      if (!orgId) {
+        return res.status(400).json({ error: "Organization ID required" });
+      }
+      
+      // Verify ownership before updating
+      const existing = await storage.getNotificationChannel(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Notification channel not found" });
+      }
+      if (existing.organizationId !== orgId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const channel = await storage.updateNotificationChannel(req.params.id, req.body);
+      res.json(channel);
+    } catch (error) {
+      console.error("Error updating notification channel:", error);
+      res.status(500).json({ error: "Failed to update notification channel" });
+    }
+  });
+
+  app.delete("/api/notification-channels/:id", async (req, res) => {
+    try {
+      const orgId = req.query.orgId as string;
+      if (!orgId) {
+        return res.status(400).json({ error: "Organization ID required" });
+      }
+      
+      // Verify ownership before deleting
+      const existing = await storage.getNotificationChannel(req.params.id);
+      if (!existing) {
+        return res.status(404).json({ error: "Notification channel not found" });
+      }
+      if (existing.organizationId !== orgId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      await storage.deleteNotificationChannel(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting notification channel:", error);
+      res.status(500).json({ error: "Failed to delete notification channel" });
+    }
+  });
+
+  // ==================== Alerts ====================
+  
+  app.get("/api/alerts", async (req, res) => {
+    try {
+      const orgId = req.query.orgId as string;
+      const status = req.query.status as string;
+      
+      if (!orgId) {
+        return res.status(400).json({ error: "Organization ID required" });
+      }
+
+      const alertsList = status === "active" 
+        ? await storage.getActiveAlerts(orgId)
+        : await storage.getAlerts(orgId);
+      res.json(alertsList);
+    } catch (error) {
+      console.error("Error fetching alerts:", error);
+      res.status(500).json({ error: "Failed to fetch alerts" });
+    }
+  });
+
+  app.patch("/api/alerts/:id/acknowledge", async (req, res) => {
+    try {
+      const orgId = req.query.orgId as string;
+      if (!orgId) {
+        return res.status(400).json({ error: "Organization ID required" });
+      }
+      
+      // Verify ownership BEFORE updating
+      const existingAlert = await storage.getAlert(req.params.id);
+      if (!existingAlert) {
+        return res.status(404).json({ error: "Alert not found" });
+      }
+      if (existingAlert.organizationId !== orgId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const alert = await storage.updateAlertStatus(req.params.id, "acknowledged");
+      res.json(alert);
+    } catch (error) {
+      console.error("Error acknowledging alert:", error);
+      res.status(500).json({ error: "Failed to acknowledge alert" });
+    }
+  });
+
+  app.patch("/api/alerts/:id/resolve", async (req, res) => {
+    try {
+      const orgId = req.query.orgId as string;
+      if (!orgId) {
+        return res.status(400).json({ error: "Organization ID required" });
+      }
+      
+      // Verify ownership BEFORE updating
+      const existingAlert = await storage.getAlert(req.params.id);
+      if (!existingAlert) {
+        return res.status(404).json({ error: "Alert not found" });
+      }
+      if (existingAlert.organizationId !== orgId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const alert = await storage.updateAlertStatus(req.params.id, "resolved", new Date());
+      res.json(alert);
+    } catch (error) {
+      console.error("Error resolving alert:", error);
+      res.status(500).json({ error: "Failed to resolve alert" });
     }
   });
 

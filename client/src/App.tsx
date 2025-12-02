@@ -15,6 +15,7 @@ import Dashboard from "@/pages/dashboard";
 import Hosts from "@/pages/hosts";
 import HostDetail from "@/pages/host-detail";
 import Agents from "@/pages/agents";
+import Alerts from "@/pages/alerts";
 import Roadmap from "@/pages/roadmap";
 import Settings from "@/pages/settings";
 import type { Organization } from "@shared/schema";
@@ -26,6 +27,7 @@ function Router() {
       <Route path="/hosts" component={Hosts} />
       <Route path="/hosts/:id" component={HostDetail} />
       <Route path="/agents" component={Agents} />
+      <Route path="/alerts" component={Alerts} />
       <Route path="/roadmap" component={Roadmap} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />

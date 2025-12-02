@@ -4,6 +4,9 @@ import {
   agents,
   customFieldDefinitions,
   roadmapItems,
+  alertRules,
+  notificationChannels,
+  alerts,
   type Organization,
   type InsertOrganization,
   type Host,
@@ -14,6 +17,12 @@ import {
   type InsertCustomFieldDefinition,
   type RoadmapItem,
   type InsertRoadmapItem,
+  type AlertRule,
+  type InsertAlertRule,
+  type NotificationChannel,
+  type InsertNotificationChannel,
+  type Alert,
+  type InsertAlert,
   type HostWithAgent,
   type HostMetrics,
 } from "@shared/schema";
@@ -45,6 +54,27 @@ export interface IStorage {
   // Roadmap
   getRoadmapItems(): Promise<RoadmapItem[]>;
   createRoadmapItem(item: InsertRoadmapItem): Promise<RoadmapItem>;
+  
+  // Alert Rules
+  getAlertRules(organizationId: string): Promise<AlertRule[]>;
+  getAlertRule(id: string): Promise<AlertRule | undefined>;
+  createAlertRule(rule: InsertAlertRule): Promise<AlertRule>;
+  updateAlertRule(id: string, data: Partial<AlertRule>): Promise<AlertRule | undefined>;
+  deleteAlertRule(id: string): Promise<void>;
+  
+  // Notification Channels
+  getNotificationChannels(organizationId: string): Promise<NotificationChannel[]>;
+  getNotificationChannel(id: string): Promise<NotificationChannel | undefined>;
+  createNotificationChannel(channel: InsertNotificationChannel): Promise<NotificationChannel>;
+  updateNotificationChannel(id: string, data: Partial<NotificationChannel>): Promise<NotificationChannel | undefined>;
+  deleteNotificationChannel(id: string): Promise<void>;
+  
+  // Alerts
+  getAlerts(organizationId: string): Promise<Alert[]>;
+  getActiveAlerts(organizationId: string): Promise<Alert[]>;
+  getAlert(id: string): Promise<Alert | undefined>;
+  createAlert(alert: InsertAlert): Promise<Alert>;
+  updateAlertStatus(id: string, status: string, resolvedAt?: Date): Promise<Alert | undefined>;
 }
 
 // In-memory metrics storage (not persisted to database)
@@ -209,6 +239,106 @@ export class DatabaseStorage implements IStorage {
   async createRoadmapItem(item: InsertRoadmapItem): Promise<RoadmapItem> {
     const [created] = await db.insert(roadmapItems).values(item).returning();
     return created;
+  }
+
+  // Alert Rules
+  async getAlertRules(organizationId: string): Promise<AlertRule[]> {
+    return db
+      .select()
+      .from(alertRules)
+      .where(eq(alertRules.organizationId, organizationId))
+      .orderBy(desc(alertRules.createdAt));
+  }
+
+  async getAlertRule(id: string): Promise<AlertRule | undefined> {
+    const [rule] = await db.select().from(alertRules).where(eq(alertRules.id, id));
+    return rule || undefined;
+  }
+
+  async createAlertRule(rule: InsertAlertRule): Promise<AlertRule> {
+    const [created] = await db.insert(alertRules).values(rule).returning();
+    return created;
+  }
+
+  async updateAlertRule(id: string, data: Partial<AlertRule>): Promise<AlertRule | undefined> {
+    const [updated] = await db
+      .update(alertRules)
+      .set(data)
+      .where(eq(alertRules.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteAlertRule(id: string): Promise<void> {
+    await db.delete(alertRules).where(eq(alertRules.id, id));
+  }
+
+  // Notification Channels
+  async getNotificationChannels(organizationId: string): Promise<NotificationChannel[]> {
+    return db
+      .select()
+      .from(notificationChannels)
+      .where(eq(notificationChannels.organizationId, organizationId))
+      .orderBy(desc(notificationChannels.createdAt));
+  }
+
+  async getNotificationChannel(id: string): Promise<NotificationChannel | undefined> {
+    const [channel] = await db.select().from(notificationChannels).where(eq(notificationChannels.id, id));
+    return channel || undefined;
+  }
+
+  async createNotificationChannel(channel: InsertNotificationChannel): Promise<NotificationChannel> {
+    const [created] = await db.insert(notificationChannels).values(channel).returning();
+    return created;
+  }
+
+  async updateNotificationChannel(id: string, data: Partial<NotificationChannel>): Promise<NotificationChannel | undefined> {
+    const [updated] = await db
+      .update(notificationChannels)
+      .set(data)
+      .where(eq(notificationChannels.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async deleteNotificationChannel(id: string): Promise<void> {
+    await db.delete(notificationChannels).where(eq(notificationChannels.id, id));
+  }
+
+  // Alerts
+  async getAlerts(organizationId: string): Promise<Alert[]> {
+    return db
+      .select()
+      .from(alerts)
+      .where(eq(alerts.organizationId, organizationId))
+      .orderBy(desc(alerts.triggeredAt));
+  }
+
+  async getActiveAlerts(organizationId: string): Promise<Alert[]> {
+    return db
+      .select()
+      .from(alerts)
+      .where(and(eq(alerts.organizationId, organizationId), eq(alerts.status, "active")))
+      .orderBy(desc(alerts.triggeredAt));
+  }
+
+  async getAlert(id: string): Promise<Alert | undefined> {
+    const [alert] = await db.select().from(alerts).where(eq(alerts.id, id));
+    return alert || undefined;
+  }
+
+  async createAlert(alert: InsertAlert): Promise<Alert> {
+    const [created] = await db.insert(alerts).values(alert).returning();
+    return created;
+  }
+
+  async updateAlertStatus(id: string, status: string, resolvedAt?: Date): Promise<Alert | undefined> {
+    const [updated] = await db
+      .update(alerts)
+      .set({ status, resolvedAt })
+      .where(eq(alerts.id, id))
+      .returning();
+    return updated || undefined;
   }
 }
 

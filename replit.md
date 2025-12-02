@@ -36,6 +36,11 @@ Preferred communication style: Simple, everyday language.
 - `/api/hosts` - Host registration and retrieval
 - `/api/agents` - Agent status and version tracking
 - `/api/dashboard` - Aggregated dashboard statistics
+- `/api/alert-rules` - Alert rule CRUD with organization scoping
+- `/api/notification-channels` - Notification channel CRUD with organization scoping
+- `/api/alerts` - Alert history with acknowledge/resolve actions
+
+**Alert Evaluation**: When agents send heartbeats with metrics, the system automatically evaluates active alert rules and creates alerts when thresholds are exceeded. Duplicate alerts are prevented by checking for existing active alerts per rule/host combination.
 
 **Request Handling**: JSON body parsing with raw body preservation for webhook-style integrations. Request logging middleware tracks response times and status codes.
 
@@ -55,6 +60,9 @@ Preferred communication style: Simple, everyday language.
 - **Agents**: Separate table tracks agent versions, status, and heartbeat timestamps with one-to-one relationship to hosts
 - **Custom Field Definitions**: Allow organizations to define metadata schemas for their hosts
 - **Roadmap Items**: Support feature planning and status tracking
+- **Alert Rules**: Configurable threshold-based rules for CPU, memory, disk metrics with severity levels (info, warning, critical)
+- **Notification Channels**: Support email, Slack, and webhook notification destinations
+- **Alerts**: Historical record of triggered alerts with status tracking (active, acknowledged, resolved)
 
 **Migrations**: Managed through Drizzle Kit with configuration in `drizzle.config.ts`.
 

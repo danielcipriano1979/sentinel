@@ -85,6 +85,77 @@ export const roadmapItems = pgTable("roadmap_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Alert Rules - define thresholds and conditions for alerts
+export const alertRules = pgTable("alert_rules", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  metricType: text("metric_type").notNull(), // cpu, memory, disk, agent_status
+  condition: text("condition").notNull(), // gt, lt, eq (greater than, less than, equal)
+  threshold: integer("threshold").notNull(), // percentage or value
+  duration: integer("duration").default(60), // seconds before triggering
+  severity: text("severity").notNull().default("warning"), // info, warning, critical
+  enabled: boolean("enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const alertRulesRelations = relations(alertRules, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [alertRules.organizationId],
+    references: [organizations.id],
+  }),
+  alerts: many(alerts),
+}));
+
+// Notification Channels - configure where alerts are sent
+export const notificationChannels = pgTable("notification_channels", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // webhook, email, slack
+  config: jsonb("config").notNull().default({}), // webhook_url, email, slack_webhook
+  enabled: boolean("enabled").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const notificationChannelsRelations = relations(notificationChannels, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [notificationChannels.organizationId],
+    references: [organizations.id],
+  }),
+}));
+
+// Alert History - track triggered alerts
+export const alerts = pgTable("alerts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  alertRuleId: varchar("alert_rule_id").references(() => alertRules.id, { onDelete: "set null" }),
+  hostId: varchar("host_id").references(() => hosts.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  message: text("message"),
+  severity: text("severity").notNull().default("warning"),
+  status: text("status").notNull().default("active"), // active, acknowledged, resolved
+  metricValue: integer("metric_value"),
+  triggeredAt: timestamp("triggered_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+export const alertsRelations = relations(alerts, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [alerts.organizationId],
+    references: [organizations.id],
+  }),
+  alertRule: one(alertRules, {
+    fields: [alerts.alertRuleId],
+    references: [alertRules.id],
+  }),
+  host: one(hosts, {
+    fields: [alerts.hostId],
+    references: [hosts.id],
+  }),
+}));
+
 // Insert schemas
 export const insertOrganizationSchema = createInsertSchema(organizations).omit({
   id: true,
@@ -110,6 +181,21 @@ export const insertRoadmapItemSchema = createInsertSchema(roadmapItems).omit({
   createdAt: true,
 });
 
+export const insertAlertRuleSchema = createInsertSchema(alertRules).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertNotificationChannelSchema = createInsertSchema(notificationChannels).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAlertSchema = createInsertSchema(alerts).omit({
+  id: true,
+  triggeredAt: true,
+});
+
 // Types
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
@@ -122,9 +208,19 @@ export type InsertAgent = z.infer<typeof insertAgentSchema>;
 
 export type CustomFieldDefinition = typeof customFieldDefinitions.$inferSelect;
 export type InsertCustomFieldDefinition = z.infer<typeof insertCustomFieldDefinitionSchema>;
+export type CustomField = CustomFieldDefinition; // Alias for convenience
 
 export type RoadmapItem = typeof roadmapItems.$inferSelect;
 export type InsertRoadmapItem = z.infer<typeof insertRoadmapItemSchema>;
+
+export type AlertRule = typeof alertRules.$inferSelect;
+export type InsertAlertRule = z.infer<typeof insertAlertRuleSchema>;
+
+export type NotificationChannel = typeof notificationChannels.$inferSelect;
+export type InsertNotificationChannel = z.infer<typeof insertNotificationChannelSchema>;
+
+export type Alert = typeof alerts.$inferSelect;
+export type InsertAlert = z.infer<typeof insertAlertSchema>;
 
 // Extended types for API responses
 export type HostWithAgent = Host & {

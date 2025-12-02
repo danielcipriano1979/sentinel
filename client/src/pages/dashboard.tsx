@@ -74,10 +74,13 @@ export default function Dashboard() {
   };
 
   const recentHosts = hosts.slice(0, 6);
-  const alertCount = hosts.filter((h) => {
+  
+  // Use server-provided alerts count, fallback to host status calculation
+  const hostAlertCount = hosts.filter((h) => {
     const status = getHostStatus(h.lastSeenAt, h.agent?.status);
     return status === "critical" || status === "warning";
   }).length;
+  const alertCount = (stats?.alerts || 0) + hostAlertCount;
 
   return (
     <div className="p-6 space-y-6">
