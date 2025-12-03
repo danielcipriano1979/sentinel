@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +9,7 @@ import { useAuthContext } from "@/hooks/useAuthContext";
 
 export function UnifiedLoginPage() {
   const [, navigate] = useLocation();
-  const { setUser, setToken, setOrganization } = useUser();
+  const { setUser, setToken, setOrganization, user } = useUser();
   const { setAdminToken } = useAuthContext();
 
   const [email, setEmail] = useState("");
@@ -18,6 +18,24 @@ export function UnifiedLoginPage() {
   const [error, setError] = useState("");
   const [showTenantRequest, setShowTenantRequest] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const pendingRedirectRef = useRef<{ role: string } | null>(null);
+
+  // Handle redirect after user context is updated
+  useEffect(() => {
+    if (user && pendingRedirectRef.current) {
+      const role = pendingRedirectRef.current.role;
+      pendingRedirectRef.current = null;
+
+      // Navigate based on role
+      if (role === "owner" || role === "admin") {
+        navigate("/organization-members");
+      } else if (role === "viewer") {
+        navigate("/dashboard?readonly=true");
+      } else {
+        navigate("/dashboard");
+      }
+    }
+  }, [user, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,20 +69,18 @@ export function UnifiedLoginPage() {
         return;
       }
 
-      if (data.status === "authenticated") {
+      if (data.status === "authenticated" && data.token && data.user && data.organization) {
         // Login successful - set user and organization
+        // Store the role for the redirect effect
+        pendingRedirectRef.current = { role: data.user.role };
+
+        // Set context in order: token first, then user, then organization
         setToken(data.token);
         setUser(data.user);
         setOrganization(data.organization);
-
-        // Redirect based on role
-        if (data.user.role === "owner" || data.user.role === "admin") {
-          navigate("/organization-members");
-        } else if (data.user.role === "viewer") {
-          navigate("/dashboard?readonly=true");
-        } else {
-          navigate("/dashboard");
-        }
+        // The useEffect will trigger navigation once user context is updated
+      } else if (!data.status) {
+        setError("Unexpected response from server. Please try again.");
       }
     } catch (err) {
       setError("Network error. Please try again.");

@@ -172,38 +172,49 @@ export async function registerUserRoutes(app: Express): Promise<void> {
       }
 
       // Find all organizations where this user exists
-      const userOrganizations = await storage.getUserOrganizations(email);
+      let userOrganizations: any[] = [];
+      try {
+        userOrganizations = await storage.getUserOrganizations(email);
+      } catch (err) {
+        console.error("Error fetching user organizations:", err);
+        // Continue - user might have no organizations
+      }
 
-      if (userOrganizations.length > 0) {
+      if (userOrganizations && userOrganizations.length > 0) {
         // User exists in at least one organization - login to the first one
         const org = userOrganizations[0];
-        const { user, token } = await UserAuthService.login(
-          org.id,
-          email,
-          password
-        );
+        try {
+          const { user, token } = await UserAuthService.login(
+            org.id,
+            email,
+            password
+          );
 
-        res.json({
-          user: {
-            id: user.id,
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            role: user.role,
-            organizationId: user.organizationId,
-          },
-          organization: {
-            id: org.id,
-            name: org.name,
-            slug: org.slug,
-          },
-          token,
-          status: "authenticated",
-        });
+          return res.json({
+            user: {
+              id: user.id,
+              email: user.email,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              role: user.role,
+              organizationId: user.organizationId,
+            },
+            organization: {
+              id: org.id,
+              name: org.name,
+              slug: org.slug,
+            },
+            token,
+            status: "authenticated",
+          });
+        } catch (loginErr: any) {
+          console.error("Login error for organization:", loginErr);
+          throw loginErr;
+        }
       } else {
         // User doesn't exist in any organization
         // Return status asking for tenant creation
-        res.json({
+        return res.json({
           email: email,
           status: "no_tenant",
           message: "User has no organization. Please create or request an organization.",
