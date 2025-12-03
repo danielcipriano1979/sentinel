@@ -119,119 +119,176 @@ export function AdminTenantsPage() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Tenants Management</h1>
+        <div>
+          <h1 className="text-4xl font-bold text-gray-900">Tenants Management</h1>
+          <p className="text-gray-600 mt-1">Manage and monitor all tenant organizations</p>
+        </div>
         <Button onClick={() => navigate("/admin")}>Back to Dashboard</Button>
       </div>
 
       {/* Filters */}
-      <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Search</label>
-            <Input
-              placeholder="Search by name or slug..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+      <Card className="p-6 border border-gray-200 shadow-sm">
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Search Tenants
+              </label>
+              <Input
+                placeholder="Search by name or slug..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-10"
+              />
+            </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Filter by Status</label>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="suspended">Suspended</SelectItem>
-                <SelectItem value="canceled">Canceled</SelectItem>
-              </SelectContent>
-            </Select>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Status Filter
+              </label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
+                  <SelectItem value="canceled">Canceled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </Card>
 
       {/* Tenants Table */}
-      <Card className="p-6">
+      <Card className="p-6 border border-gray-200 shadow-sm">
         {isLoading ? (
-          <div className="text-center py-8 text-gray-500">Loading tenants...</div>
+          <div className="text-center py-12 text-gray-500">
+            <div className="text-lg">Loading tenants...</div>
+          </div>
         ) : filteredTenants.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">No tenants found</div>
+          <div className="text-center py-12 text-gray-500">
+            <div className="text-lg">No tenants found</div>
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-gray-50">
-                <tr className="text-left">
-                  <th className="px-4 py-3 font-semibold">Name</th>
-                  <th className="px-4 py-3 font-semibold">Slug</th>
-                  <th className="px-4 py-3 font-semibold">Plan</th>
-                  <th className="px-4 py-3 font-semibold">Hosts</th>
-                  <th className="px-4 py-3 font-semibold">Status</th>
-                  <th className="px-4 py-3 font-semibold">Created</th>
-                  <th className="px-4 py-3 font-semibold">Actions</th>
+            <table className="w-full">
+              <thead>
+                <tr className="border-b-2 border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                    Slug
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                    Plan
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                    Hosts
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                    Created
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-900 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
-              <tbody>
-                {filteredTenants.map((tenant) => (
-                  <tr key={tenant.id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-3 font-medium">{tenant.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{tenant.slug}</td>
-                    <td className="px-4 py-3">
+              <tbody className="divide-y divide-gray-200">
+                {filteredTenants.map((tenant, idx) => (
+                  <tr
+                    key={tenant.id}
+                    className={`transition-colors hover:bg-gray-50 ${
+                      idx % 2 === 0 ? "bg-white" : "bg-gray-50"
+                    }`}
+                  >
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-gray-900">{tenant.name}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-800">
+                        {tenant.slug}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
                       <div className="text-sm">
-                        <div className="font-medium">{tenant.plan?.name || "Unknown"}</div>
+                        <div className="font-medium text-gray-900">
+                          {tenant.plan?.name || "—"}
+                        </div>
                         {tenant.plan && (
-                          <div className="text-gray-500">
-                            ${tenant.plan.monthlyPrice / 100}/month
+                          <div className="text-gray-600">
+                            ${tenant.plan.monthlyPrice / 100}/mo
                           </div>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-4">
                       <div className="text-sm">
-                        {tenant.hostCount}
+                        <div className="font-medium text-gray-900">
+                          {tenant.hostCount}
+                        </div>
                         {tenant.plan && (
-                          <div className="text-gray-500">
+                          <div className="text-gray-600">
                             of {tenant.plan.maxHosts}
                           </div>
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
-                      <Badge className={statusColors[tenant.status] || "bg-gray-100"}>
-                        {tenant.status}
+                    <td className="px-6 py-4">
+                      <Badge
+                        className={`${statusColors[tenant.status] || "bg-gray-100 text-gray-800"} font-medium`}
+                      >
+                        {tenant.status.charAt(0).toUpperCase() +
+                          tenant.status.slice(1)}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {new Date(tenant.createdAt).toLocaleDateString()}
+                    <td className="px-6 py-4 text-sm text-gray-600">
+                      {new Date(tenant.createdAt).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
                     </td>
-                    <td className="px-4 py-3 space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigate(`/admin/tenants/${tenant.id}`)}
-                      >
-                        View
-                      </Button>
-
-                      {tenant.status === "active" ? (
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleSuspend(tenant.id)}
-                        >
-                          Suspend
-                        </Button>
-                      ) : (
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleReactivate(tenant.id)}
+                          onClick={() => navigate(`/admin/tenants/${tenant.id}`)}
+                          className="text-xs"
                         >
-                          Reactivate
+                          View
                         </Button>
-                      )}
+
+                        {tenant.status === "active" ? (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => handleSuspend(tenant.id)}
+                            className="text-xs"
+                          >
+                            Suspend
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReactivate(tenant.id)}
+                            className="text-xs"
+                          >
+                            Reactivate
+                          </Button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -240,8 +297,11 @@ export function AdminTenantsPage() {
           </div>
         )}
 
-        <div className="mt-4 text-sm text-gray-600">
-          Showing {filteredTenants.length} of {tenants.length} tenants
+        <div className="mt-6 flex items-center justify-between border-t pt-4">
+          <div className="text-sm text-gray-600">
+            Showing <span className="font-semibold text-gray-900">{filteredTenants.length}</span> of{" "}
+            <span className="font-semibold text-gray-900">{tenants.length}</span> tenants
+          </div>
         </div>
       </Card>
     </div>
