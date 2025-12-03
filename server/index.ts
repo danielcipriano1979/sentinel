@@ -4,6 +4,7 @@ import { registerRoutes } from "./routes";
 import { registerAdminRoutes } from "./admin-routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { closeDatabase } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
@@ -88,7 +89,7 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
+  const server = httpServer.listen(
     {
       port,
       host: "0.0.0.0",
@@ -98,4 +99,33 @@ app.use((req, res, next) => {
       log(`serving on port ${port}`);
     },
   );
+
+  // Graceful shutdown handlers
+  const shutdown = async (signal: string) => {
+    log(`Received ${signal}, starting graceful shutdown...`);
+
+    // Stop accepting new connections
+    server.close(async () => {
+      log("HTTP server closed");
+
+      // Close database connections
+      try {
+        await closeDatabase();
+        log("Database pool closed");
+      } catch (err) {
+        console.error("Error closing database:", err);
+      }
+
+      process.exit(0);
+    });
+
+    // Force shutdown after 30 seconds
+    setTimeout(() => {
+      log("Forced shutdown after timeout");
+      process.exit(1);
+    }, 30000);
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 })();

@@ -37,17 +37,25 @@ jobs:
         mkdir -p ~/.kube
         echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
 
-    - name: Create/Update Secret with Environment Variables
+    - name: Create/Update Kubernetes Secret
       run: |
         kubectl delete secret sentinel-secret --ignore-not-found
         kubectl create secret generic sentinel-secret \
           --from-literal=DATABASE_URL="${{ secrets.DATABASE_URL }}" \
-          --from-literal=PGHOST="${{ secrets.PGHOST }}" \
-          --from-literal=PGPORT="${{ secrets.PGPORT }}" \
-          --from-literal=PGUSER="${{ secrets.PGUSER }}" \
-          --from-literal=PGPASSWORD="${{ secrets.PGPASSWORD }}" \
-          --from-literal=PGDATABASE="${{ secrets.PGDATABASE }}" \
-          --from-literal=SESSION_SECRET="${{ secrets.SESSION_SECRET }}"
+          --from-literal=DB_HOST="${{ secrets.DB_HOST }}" \
+          --from-literal=DB_PORT="${{ secrets.DB_PORT }}" \
+          --from-literal=DB_NAME="${{ secrets.DB_NAME }}" \
+          --from-literal=DB_USER="${{ secrets.DB_USER }}" \
+          --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+          --from-literal=DB_MAX_CONNECTIONS="${{ secrets.DB_MAX_CONNECTIONS }}" \
+          --from-literal=DB_MIN_CONNECTIONS="${{ secrets.DB_MIN_CONNECTIONS }}" \
+          --from-literal=DB_CONNECTION_TIMEOUT_MS="${{ secrets.DB_CONNECTION_TIMEOUT_MS }}" \
+          --from-literal=DB_IDLE_TIMEOUT_MS="${{ secrets.DB_IDLE_TIMEOUT_MS }}" \
+          --from-literal=DB_STATEMENT_TIMEOUT_MS="${{ secrets.DB_STATEMENT_TIMEOUT_MS }}" \
+          --from-literal=PORT="${{ secrets.PORT }}" \
+          --from-literal=NODE_ENV="${{ secrets.NODE_ENV }}" \
+          --from-literal=SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
+          --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}"
 
     - name: Apply Kubernetes manifests
       run: |

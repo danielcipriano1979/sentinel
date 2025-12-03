@@ -5,7 +5,10 @@
       "Bash(find:*)",
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nImplement Admin Side (Topic 1) - Global Control Panel\n\nFeatures:\n- Admin authentication with JWT + MFA (TOTP)\n- Tenant management (list, view, suspend, reactivate)\n- Subscription plan management and assignment\n- Complete audit logging system\n- System settings and configuration\n- Admin dashboard with statistics and charts\n\nDatabase:\n- Added admin_users table with MFA support\n- Added admin_sessions for token management\n- Added subscription_plans table\n- Added organization_plans for subscription tracking\n- Added audit_logs table for compliance tracking\n\nBackend:\n- AdminAuthService with password hashing and MFA\n- JWT token generation (24h expiry)\n- Admin routes with token verification middleware\n- Subscription plan endpoints\n- Tenant management endpoints\n- Audit log retrieval and filtering\n\nFrontend:\n- Admin login page with MFA support\n- Admin registration\n- Admin dashboard with charts\n- Tenants list with search/filter\n- Tenant details with plan management\n- Audit logs viewer with export\n- System settings page\n- Authentication context for token management\n\nSecurity:\n- Bcryptjs password hashing (10 rounds)\n- JWT token verification\n- TOTP-based MFA with QR code generation\n- Session tracking and revocation\n- Audit trail for all admin actions\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run check:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []
