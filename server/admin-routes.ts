@@ -35,6 +35,19 @@ export async function verifyAdminToken(
 export async function registerAdminRoutes(app: Express): Promise<void> {
   // ==================== Admin Auth ====================
 
+  // Check if admin exists
+  app.get("/api/admin/check", async (req, res) => {
+    try {
+      const admins = await storage.getAllAdminUsers();
+      const exists = admins && admins.length > 0;
+      res.json({ exists });
+    } catch (error) {
+      console.error("Error checking admin existence:", error);
+      // If we can't check, assume admin might exist
+      res.json({ exists: false });
+    }
+  });
+
   app.post("/api/admin/auth/register", async (req, res) => {
     try {
       const { email, password, firstName, lastName } = req.body;

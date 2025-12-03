@@ -1,17 +1,13 @@
 import { useState, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme-provider";
-import { OrganizationProvider, useOrganization } from "@/lib/organization-context";
+import { OrganizationProvider } from "@/lib/organization-context";
 import { AuthContext } from "@/hooks/useAuthContext";
 import { UserContextProvider } from "@/contexts/UserContext";
-import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { AddOrganizationDialog } from "@/components/add-organization-dialog";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
@@ -33,6 +29,7 @@ import { RegisterPage } from "@/pages/register";
 import { InvitePage } from "@/pages/invite";
 import { OrganizationMembersPage } from "@/pages/organization-members";
 import { OrganizationSettingsPage } from "@/pages/organization-settings";
+import { AppLayout } from "@/components/AppLayout";
 import type { Organization } from "@shared/schema";
 
 function Router() {
@@ -107,46 +104,10 @@ function Router() {
 }
 
 function AppContent() {
-  const [addOrgOpen, setAddOrgOpen] = useState(false);
-  const { setOrganizations, organizations } = useOrganization();
-
-  const { data: orgsData } = useQuery<Organization[]>({
-    queryKey: ["/api/organizations"],
-  });
-
-  useEffect(() => {
-    if (orgsData) {
-      setOrganizations(orgsData);
-    }
-  }, [orgsData, setOrganizations]);
-
-  const sidebarStyle = {
-    "--sidebar-width": "16rem",
-    "--sidebar-width-icon": "3rem",
-  };
-
   return (
-    <>
-      <SidebarProvider style={sidebarStyle as React.CSSProperties}>
-        <div className="flex h-screen w-full">
-          <AppSidebar onAddOrganization={() => setAddOrgOpen(true)} />
-          <SidebarInset className="flex flex-col flex-1 overflow-hidden">
-            <header className="flex items-center justify-between gap-4 h-14 px-4 border-b border-border flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <SidebarTrigger data-testid="button-sidebar-toggle" />
-              </div>
-              <div className="flex items-center gap-2">
-                <ThemeToggle />
-              </div>
-            </header>
-            <main className="flex-1 overflow-auto">
-              <Router />
-            </main>
-          </SidebarInset>
-        </div>
-      </SidebarProvider>
-      <AddOrganizationDialog open={addOrgOpen} onOpenChange={setAddOrgOpen} />
-    </>
+    <AppLayout>
+      <Router />
+    </AppLayout>
   );
 }
 

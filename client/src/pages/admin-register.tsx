@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 
 export function AdminRegisterPage() {
   const [, navigate] = useLocation();
@@ -15,6 +16,26 @@ export function AdminRegisterPage() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [adminExists, setAdminExists] = useState(false);
+
+  // Check if admin already exists on mount
+  useEffect(() => {
+    const checkAdminExists = async () => {
+      try {
+        const response = await fetch("/api/admin/check");
+        const data = await response.json();
+        setAdminExists(data.exists || false);
+      } catch (err) {
+        // If check fails, assume admin might exist
+        setAdminExists(false);
+      } finally {
+        setChecking(false);
+      }
+    };
+
+    checkAdminExists();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -61,6 +82,59 @@ export function AdminRegisterPage() {
       setLoading(false);
     }
   };
+
+  // Show loading state while checking if admin exists
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <Card className="w-full max-w-md p-8 shadow-lg">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show message if admin already exists
+  if (adminExists) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+        <Card className="w-full max-w-md p-8 shadow-lg">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-center">Admin Already Exists</h1>
+            <p className="text-center text-gray-600 mt-2">HostWatch Global Control Panel</p>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+            <p className="text-sm text-blue-800 mb-3">
+              An administrator account has already been created for this system.
+            </p>
+            <p className="text-sm text-blue-800">
+              New administrators can only be invited by the current system administrator.
+            </p>
+          </div>
+
+          <Button
+            className="w-full"
+            onClick={() => navigate("/admin/login")}
+          >
+            Go to Admin Login
+          </Button>
+
+          <div className="mt-6 pt-6 border-t text-center text-sm text-gray-600">
+            <p>Are you an existing administrator?</p>
+            <button
+              className="text-blue-600 hover:text-blue-700 underline font-medium"
+              onClick={() => navigate("/admin/login")}
+            >
+              Sign in here
+            </button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
