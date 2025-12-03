@@ -1,0 +1,327 @@
+/**
+ * Design Tokens - CSS Variables
+ *
+ * This file maps the design tokens defined in design-tokens.ts
+ * to CSS custom properties for use in stylesheets and inline styles.
+ *
+ * Color format: HSL (Hue Saturation Lightness)
+ * This format is ideal for theming as it's easy to create variations
+ * and apply both light and dark mode transformations.
+ */
+
+/* ============================================
+   ROOT (LIGHT MODE) - DEFAULT
+   ============================================ */
+:root {
+  /* COLORS - PRIMARY */
+  --color-primary-50: 217 91% 95%;
+  --color-primary-100: 217 91% 90%;
+  --color-primary-200: 217 91% 80%;
+  --color-primary-300: 217 91% 65%;
+  --color-primary-400: 217 91% 53%;
+  --color-primary-500: 217 91% 42%;
+  --color-primary-600: 217 91% 35%;
+  --color-primary-700: 217 91% 25%;
+  --color-primary-800: 217 91% 15%;
+  --color-primary-900: 217 91% 8%;
+
+  /* COLORS - SECONDARY (GRAY) */
+  --color-secondary-50: 220 15% 98%;
+  --color-secondary-100: 220 15% 95%;
+  --color-secondary-200: 220 12% 92%;
+  --color-secondary-300: 220 12% 88%;
+  --color-secondary-400: 220 12% 75%;
+  --color-secondary-500: 220 12% 60%;
+  --color-secondary-600: 220 12% 45%;
+  --color-secondary-700: 220 12% 30%;
+  --color-secondary-800: 220 14% 10%;
+  --color-secondary-900: 220 15% 8%;
+
+  /* COLORS - ACCENT */
+  --color-accent-50: 271 81% 95%;
+  --color-accent-100: 271 81% 90%;
+  --color-accent-500: 271 81% 56%;
+  --color-accent-900: 271 81% 20%;
+
+  /* COLORS - STATUS: CRITICAL */
+  --color-critical-50: 0 84% 95%;
+  --color-critical-100: 0 84% 90%;
+  --color-critical-200: 0 84% 80%;
+  --color-critical-300: 0 84% 65%;
+  --color-critical-400: 0 84% 56%;
+  --color-critical-500: 0 84% 48%;
+  --color-critical-600: 0 84% 40%;
+  --color-critical-700: 0 84% 25%;
+  --color-critical-800: 0 84% 15%;
+  --color-critical-900: 0 84% 8%;
+
+  /* COLORS - STATUS: WARNING */
+  --color-warning-50: 38 92% 95%;
+  --color-warning-100: 38 92% 90%;
+  --color-warning-200: 38 92% 80%;
+  --color-warning-300: 38 92% 65%;
+  --color-warning-400: 38 92% 57%;
+  --color-warning-500: 38 92% 50%;
+  --color-warning-600: 38 92% 40%;
+  --color-warning-700: 38 92% 25%;
+  --color-warning-800: 38 92% 15%;
+  --color-warning-900: 38 92% 8%;
+
+  /* COLORS - STATUS: INFO */
+  --color-info-50: 217 91% 95%;
+  --color-info-100: 217 91% 90%;
+  --color-info-200: 217 91% 80%;
+  --color-info-300: 217 91% 65%;
+  --color-info-400: 217 91% 53%;
+  --color-info-500: 217 91% 42%;
+  --color-info-600: 217 91% 35%;
+  --color-info-700: 217 91% 25%;
+  --color-info-800: 217 91% 15%;
+  --color-info-900: 217 91% 8%;
+
+  /* COLORS - STATUS: SUCCESS */
+  --color-success-50: 142 76% 95%;
+  --color-success-100: 142 76% 90%;
+  --color-success-200: 142 76% 80%;
+  --color-success-300: 142 76% 65%;
+  --color-success-400: 142 76% 50%;
+  --color-success-500: 142 76% 36%;
+  --color-success-600: 142 76% 28%;
+  --color-success-700: 142 76% 18%;
+  --color-success-800: 142 76% 10%;
+  --color-success-900: 142 76% 5%;
+
+  /* COLORS - NEUTRAL */
+  --color-neutral-50: 220 15% 98%;
+  --color-neutral-100: 220 15% 95%;
+  --color-neutral-200: 220 12% 92%;
+  --color-neutral-300: 220 12% 88%;
+  --color-neutral-400: 220 12% 75%;
+  --color-neutral-500: 220 12% 60%;
+  --color-neutral-600: 220 12% 45%;
+  --color-neutral-700: 220 15% 18%;
+  --color-neutral-800: 220 14% 10%;
+  --color-neutral-900: 220 15% 8%;
+
+  /* SEMANTIC COLORS - LIGHT MODE */
+  --color-text-primary: hsl(var(--color-secondary-900));
+  --color-text-secondary: hsl(var(--color-secondary-600));
+  --color-text-tertiary: hsl(var(--color-secondary-500));
+  --color-text-disabled: hsl(var(--color-secondary-400));
+
+  --color-bg-primary: hsl(var(--color-secondary-50));
+  --color-bg-secondary: hsl(var(--color-secondary-100));
+  --color-bg-tertiary: hsl(var(--color-secondary-200));
+
+  --color-border-light: hsl(var(--color-secondary-200));
+  --color-border-normal: hsl(var(--color-secondary-300));
+  --color-border-dark: hsl(var(--color-secondary-400));
+
+  /* STATUS BACKGROUNDS - LIGHT MODE */
+  --color-critical-bg: hsl(var(--color-critical-50));
+  --color-critical-fg: hsl(var(--color-critical-900));
+
+  --color-warning-bg: hsl(var(--color-warning-50));
+  --color-warning-fg: hsl(var(--color-warning-900));
+
+  --color-info-bg: hsl(var(--color-info-50));
+  --color-info-fg: hsl(var(--color-info-900));
+
+  --color-success-bg: hsl(var(--color-success-50));
+  --color-success-fg: hsl(var(--color-success-900));
+
+  /* ELEVATION SYSTEM */
+  --color-elevate-1: rgba(0, 0, 0, 0.03);
+  --color-elevate-2: rgba(0, 0, 0, 0.08);
+
+  /* TYPOGRAPHY */
+  --font-sans: "Inter", "Helvetica Neue", sans-serif;
+  --font-mono: "Fira Code", "Menlo", monospace;
+
+  --text-xs-size: 12px;
+  --text-xs-line-height: 1.4;
+  --text-xs-letter-spacing: 0.3px;
+
+  --text-sm-size: 13px;
+  --text-sm-line-height: 1.5;
+  --text-sm-letter-spacing: 0.2px;
+
+  --text-base-size: 14px;
+  --text-base-line-height: 1.5;
+  --text-base-letter-spacing: 0px;
+
+  --text-md-size: 15px;
+  --text-md-line-height: 1.5;
+  --text-md-letter-spacing: 0px;
+
+  --text-lg-size: 16px;
+  --text-lg-line-height: 1.6;
+  --text-lg-letter-spacing: -0.5px;
+
+  --text-xl-size: 18px;
+  --text-xl-line-height: 1.6;
+  --text-xl-letter-spacing: -0.5px;
+
+  --text-2xl-size: 22px;
+  --text-2xl-line-height: 1.5;
+  --text-2xl-letter-spacing: -1px;
+
+  --text-3xl-size: 28px;
+  --text-3xl-line-height: 1.4;
+  --text-3xl-letter-spacing: -1.5px;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* SHADOWS - LIGHT MODE */
+  --shadow-none: none;
+  --shadow-xs: 0px 2px 0px 0px hsl(220 12% 5% / 0.05);
+  --shadow-sm: 0px 2px 0px 0px hsl(220 12% 5% / 0.05), 0px 1px 2px -1px hsl(220 12% 5% / 0.08);
+  --shadow-md: 0px 2px 0px 0px hsl(220 12% 5% / 0.10), 0px 2px 4px -1px hsl(220 12% 5% / 0.15);
+  --shadow-lg: 0px 2px 0px 0px hsl(220 12% 5% / 0.12), 0px 4px 6px -1px hsl(220 12% 5% / 0.18);
+  --shadow-xl: 0px 2px 0px 0px hsl(220 12% 5% / 0.15), 0px 8px 10px -1px hsl(220 12% 5% / 0.22);
+  --shadow-2xl: 0px 2px 0px 0px hsl(220 12% 5% / 0.25);
+
+  /* BORDER RADIUS */
+  --radius-none: 0;
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* TRANSITIONS */
+  --transition-duration-instant: 0ms;
+  --transition-duration-faster: 100ms;
+  --transition-duration-fast: 150ms;
+  --transition-duration-base: 200ms;
+  --transition-duration-slow: 300ms;
+  --transition-duration-slower: 500ms;
+
+  --transition-easing-linear: cubic-bezier(0, 0, 1, 1);
+  --transition-easing-in: cubic-bezier(0.4, 0, 1, 1);
+  --transition-easing-out: cubic-bezier(0, 0, 0.2, 1);
+  --transition-easing-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Z-INDEX */
+  --z-base: 0;
+  --z-docked: 10;
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-backdrop: 1040;
+  --z-offcanvas: 1050;
+  --z-modal: 1060;
+  --z-popover: 1070;
+  --z-tooltip: 1080;
+  --z-notification: 1090;
+}
+
+/* ============================================
+   DARK MODE OVERRIDES
+   ============================================ */
+.dark {
+  /* SEMANTIC COLORS - DARK MODE */
+  --color-text-primary: hsl(var(--color-secondary-100));
+  --color-text-secondary: hsl(var(--color-secondary-300));
+  --color-text-tertiary: hsl(var(--color-secondary-400));
+  --color-text-disabled: hsl(var(--color-secondary-500));
+
+  --color-bg-primary: hsl(var(--color-secondary-900));
+  --color-bg-secondary: hsl(var(--color-secondary-800));
+  --color-bg-tertiary: hsl(var(--color-secondary-700));
+
+  --color-border-light: hsl(var(--color-secondary-700));
+  --color-border-normal: hsl(var(--color-secondary-600));
+  --color-border-dark: hsl(var(--color-secondary-500));
+
+  /* STATUS BACKGROUNDS - DARK MODE */
+  --color-critical-bg: hsl(var(--color-critical-900));
+  --color-critical-fg: hsl(var(--color-critical-100));
+
+  --color-warning-bg: hsl(var(--color-warning-900));
+  --color-warning-fg: hsl(var(--color-warning-100));
+
+  --color-info-bg: hsl(var(--color-info-900));
+  --color-info-fg: hsl(var(--color-info-100));
+
+  --color-success-bg: hsl(var(--color-success-900));
+  --color-success-fg: hsl(var(--color-success-100));
+
+  /* ELEVATION SYSTEM - DARK MODE */
+  --color-elevate-1: rgba(255, 255, 255, 0.04);
+  --color-elevate-2: rgba(255, 255, 255, 0.09);
+
+  /* SHADOWS - DARK MODE */
+  --shadow-xs: 0px 2px 0px 0px hsl(220 12% 2% / 0.30);
+  --shadow-sm: 0px 2px 0px 0px hsl(220 12% 2% / 0.35), 0px 1px 2px -1px hsl(220 12% 2% / 0.40);
+  --shadow-md: 0px 2px 0px 0px hsl(220 12% 2% / 0.45), 0px 2px 4px -1px hsl(220 12% 2% / 0.50);
+  --shadow-lg: 0px 2px 0px 0px hsl(220 12% 2% / 0.50), 0px 4px 6px -1px hsl(220 12% 2% / 0.55);
+  --shadow-xl: 0px 2px 0px 0px hsl(220 12% 2% / 0.55), 0px 8px 10px -1px hsl(220 12% 2% / 0.60);
+  --shadow-2xl: 0px 2px 0px 0px hsl(220 12% 2% / 0.65);
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   DOCUMENTATION
+   ============================================ */
+
+/*
+ * HOW TO USE THESE TOKENS
+ *
+ * In CSS/SCSS:
+ *   background-color: hsl(var(--color-primary-500));
+ *   box-shadow: var(--shadow-md);
+ *   transition: all var(--transition-duration-base) var(--transition-easing-in-out);
+ *
+ * In TypeScript/Components:
+ *   import { colors, shadows, transitions } from '@/lib/design-tokens';
+ *   const bgColor = `hsl(${colors.primary['500']})`;
+ *
+ * Color Format:
+ *   All colors use HSL (Hue Saturation Lightness) format
+ *   This allows easy creation of color variations and theme switching
+ *   Example: "217 91% 42%" = hsl(217deg, 91%, 42%)
+ *
+ * Naming Convention:
+ *   --property-name-variant: value;
+ *   Examples:
+ *     --color-primary-500: base color
+ *     --color-critical-bg: critical background color
+ *     --shadow-lg: large shadow
+ *     --transition-duration-fast: fast transition
+ *
+ * Dark Mode:
+ *   Add .dark class to root element to apply dark mode
+ *   Semantic colors automatically adjust in dark mode
+ *   Status colors maintain proper contrast in both modes
+ */
