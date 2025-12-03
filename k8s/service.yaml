@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sentinel-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: sentinel
+  ports:
+    - port: 80
+      targetPort: 5000
