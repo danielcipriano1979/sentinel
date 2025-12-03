@@ -119,6 +119,8 @@ export interface IStorage {
 
   // Organization Users
   getOrganizationUsers(organizationId: string): Promise<any[]>;
+  createOrganizationUser(organizationId: string, email: string, passwordHash: string, role: string, firstName?: string, lastName?: string): Promise<any>;
+  updateOrganizationUser(userId: string, organizationId: string, updates: { role?: string; status?: string }): Promise<any | undefined>;
   updateOrganizationUserRole(userId: string, organizationId: string, role: string): Promise<any | undefined>;
   removeOrganizationUser(userId: string, organizationId: string): Promise<void>;
 
@@ -634,6 +636,53 @@ export class DatabaseStorage implements IStorage {
     const { organizationUsers } = await import("@shared/schema");
     const { eq } = await import("drizzle-orm");
     return db.select().from(organizationUsers).where(eq(organizationUsers.organizationId, organizationId));
+  }
+
+  async createOrganizationUser(
+    organizationId: string,
+    email: string,
+    passwordHash: string,
+    role: string,
+    firstName?: string,
+    lastName?: string
+  ): Promise<any> {
+    const { organizationUsers } = await import("@shared/schema");
+    const [user] = await db
+      .insert(organizationUsers)
+      .values({
+        organizationId,
+        email,
+        passwordHash,
+        role,
+        firstName: firstName || null,
+        lastName: lastName || null,
+      })
+      .returning();
+    return user;
+  }
+
+  async updateOrganizationUser(
+    userId: string,
+    organizationId: string,
+    updates: { role?: string; status?: string }
+  ): Promise<any | undefined> {
+    const { organizationUsers } = await import("@shared/schema");
+    const { eq, and } = await import("drizzle-orm");
+    const updateData: any = { updatedAt: new Date() };
+    if (updates.role) updateData.role = updates.role;
+    if (updates.status) updateData.status = updates.status;
+
+    const [updated] = await db
+      .update(organizationUsers)
+      .set(updateData)
+      .where(
+        and(
+          eq(organizationUsers.id, userId),
+          eq(organizationUsers.organizationId, organizationId)
+        )
+      )
+      .returning();
+    return updated;
   }
 
   async updateOrganizationUserRole(

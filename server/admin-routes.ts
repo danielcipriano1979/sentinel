@@ -472,20 +472,17 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
         return res.status(404).json({ error: "Tenant not found" });
       }
 
-      // Return mock users data for now
-      // In a real implementation, this would fetch from the database
+      const users = await storage.getOrganizationUsers(tenantId);
       res.json({
-        users: [
-          {
-            id: "user-1",
-            email: "admin@example.com",
-            firstName: "Admin",
-            lastName: "User",
-            role: "owner",
-            status: "active",
-            createdAt: new Date().toISOString(),
-          },
-        ],
+        users: users.map((u) => ({
+          id: u.id,
+          email: u.email,
+          firstName: u.firstName || "",
+          lastName: u.lastName || "",
+          role: u.role,
+          status: u.status,
+          createdAt: u.createdAt,
+        })),
       });
     } catch (error) {
       console.error("Error fetching tenant users:", error);
@@ -506,28 +503,38 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
         });
       }
 
-      // In a real implementation, create the user in the database
-      // For now, return mock response
-      res.status(201).json({
-        id: "user-new",
+      // Hash the password
+      const passwordHash = await AdminAuthService.hashPassword(password);
+
+      // Create the user in the database
+      const user = await storage.createOrganizationUser(
+        tenantId,
         email,
-        firstName: "",
-        lastName: "",
-        role,
-        status: "active",
-        createdAt: new Date().toISOString(),
-      });
+        passwordHash,
+        role
+      );
 
       // Log audit event
       await storage.createAuditLog({
         adminUserId: adminId,
         action: "create_user",
         resource: "user",
-        resourceId: "user-new",
+        resourceId: user.id,
         organizationId: tenantId as any,
         changes: { email, role },
         ipAddress: req.ip,
         userAgent: req.headers["user-agent"],
+      });
+
+      // Return the created user (without password hash)
+      res.status(201).json({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        status: user.status,
+        createdAt: user.createdAt,
       });
     } catch (error) {
       console.error("Error adding user:", error);
@@ -547,17 +554,17 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
         return res.status(400).json({ error: "Role or status required" });
       }
 
-      // In a real implementation, update the user in the database
-      // For now, return mock response
-      res.json({
-        id: userId,
-        email: "user@example.com",
-        firstName: "John",
-        lastName: "Doe",
-        role: role || "member",
-        status: status || "active",
-        createdAt: new Date().toISOString(),
-      });
+      // Build update object with only provided fields
+      const updates: { role?: string; status?: string } = {};
+      if (role) updates.role = role;
+      if (status) updates.status = status;
+
+      // Update the user in the database
+      const user = await storage.updateOrganizationUser(userId, tenantId, updates);
+
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
 
       // Log audit event
       await storage.createAuditLog({
@@ -566,9 +573,20 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
         resource: "user",
         resourceId: userId,
         organizationId: tenantId as any,
-        changes: { role, status },
+        changes: updates,
         ipAddress: req.ip,
         userAgent: req.headers["user-agent"],
+      });
+
+      // Return the updated user
+      res.json({
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        status: user.status,
+        createdAt: user.createdAt,
       });
     } catch (error) {
       console.error("Error updating user:", error);
@@ -583,9 +601,8 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
       const tenantId = req.params.id;
       const userId = req.params.userId;
 
-      // In a real implementation, delete the user from the database
-      // For now, return mock response
-      res.json({ success: true });
+      // Delete the user from the database
+      await storage.removeOrganizationUser(userId, tenantId);
 
       // Log audit event
       await storage.createAuditLog({
@@ -598,6 +615,8 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
         ipAddress: req.ip,
         userAgent: req.headers["user-agent"],
       });
+
+      res.json({ success: true });
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ error: "Failed to delete user" });
