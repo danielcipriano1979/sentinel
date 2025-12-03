@@ -115,6 +115,15 @@ export interface IStorage {
   // Audit Logs
   createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
   getAuditLogs(filters?: { adminUserId?: string; organizationId?: string; limit?: number }): Promise<AuditLog[]>;
+
+  // Organization Users
+  getOrganizationUsers(organizationId: string): Promise<any[]>;
+  updateOrganizationUserRole(userId: string, organizationId: string, role: string): Promise<any | undefined>;
+  removeOrganizationUser(userId: string, organizationId: string): Promise<void>;
+
+  // User Invitations
+  createUserInvitation(organizationId: string, email: string, role: string, invitedBy: string): Promise<any>;
+  getUserInvitation(token: string): Promise<any | undefined>;
 }
 
 /**
@@ -612,6 +621,85 @@ export class DatabaseStorage implements IStorage {
     }
 
     return query;
+  }
+
+  // Organization Users
+  async getOrganizationUsers(organizationId: string): Promise<any[]> {
+    const { organizationUsers } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    return db.select().from(organizationUsers).where(eq(organizationUsers.organizationId, organizationId));
+  }
+
+  async updateOrganizationUserRole(
+    userId: string,
+    organizationId: string,
+    role: string
+  ): Promise<any | undefined> {
+    const { organizationUsers } = await import("@shared/schema");
+    const { eq, and } = await import("drizzle-orm");
+    const [updated] = await db
+      .update(organizationUsers)
+      .set({ role, updatedAt: new Date() })
+      .where(
+        and(
+          eq(organizationUsers.id, userId),
+          eq(organizationUsers.organizationId, organizationId)
+        )
+      )
+      .returning();
+    return updated;
+  }
+
+  async removeOrganizationUser(userId: string, organizationId: string): Promise<void> {
+    const { organizationUsers } = await import("@shared/schema");
+    const { eq, and } = await import("drizzle-orm");
+    await db
+      .delete(organizationUsers)
+      .where(
+        and(
+          eq(organizationUsers.id, userId),
+          eq(organizationUsers.organizationId, organizationId)
+        )
+      );
+  }
+
+  // User Invitations
+  async createUserInvitation(
+    organizationId: string,
+    email: string,
+    role: string,
+    invitedBy: string
+  ): Promise<any> {
+    const { userInvitations } = await import("@shared/schema");
+    const crypto = await import("crypto");
+
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 day expiry
+
+    const [invitation] = await db
+      .insert(userInvitations)
+      .values({
+        organizationId,
+        email,
+        role,
+        invitedBy,
+        token,
+        expiresAt,
+      })
+      .returning();
+
+    return invitation;
+  }
+
+  async getUserInvitation(token: string): Promise<any | undefined> {
+    const { userInvitations } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    const [invitation] = await db
+      .select()
+      .from(userInvitations)
+      .where(eq(userInvitations.token, token));
+    return invitation;
   }
 }
 

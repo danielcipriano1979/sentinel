@@ -7,10 +7,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/lib/theme-provider";
 import { OrganizationProvider, useOrganization } from "@/lib/organization-context";
 import { AuthContext } from "@/hooks/useAuthContext";
+import { UserContextProvider } from "@/contexts/UserContext";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AddOrganizationDialog } from "@/components/add-organization-dialog";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Hosts from "@/pages/hosts";
@@ -26,11 +28,23 @@ import { AdminTenantsPage } from "@/pages/admin-tenants";
 import { AdminTenantDetailsPage } from "@/pages/admin-tenant-details";
 import { AdminAuditLogsPage } from "@/pages/admin-audit-logs";
 import { AdminSettingsPage } from "@/pages/admin-settings";
+import { LoginPage } from "@/pages/login";
+import { RegisterPage } from "@/pages/register";
+import { InvitePage } from "@/pages/invite";
+import { OrganizationMembersPage } from "@/pages/organization-members";
+import { OrganizationSettingsPage } from "@/pages/organization-settings";
 import type { Organization } from "@shared/schema";
 
 function Router() {
   return (
     <Switch>
+      {/* User Auth Routes (public) */}
+      <Route path="/login" component={LoginPage} />
+      <Route path="/register" component={RegisterPage} />
+      <Route path="/invite/:token">
+        {(params) => <InvitePage params={params} />}
+      </Route>
+
       {/* Admin Routes */}
       <Route path="/admin/login" component={AdminLoginPage} />
       <Route path="/admin/register" component={AdminRegisterPage} />
@@ -40,14 +54,53 @@ function Router() {
       <Route path="/admin/audit-logs" component={AdminAuditLogsPage} />
       <Route path="/admin/settings" component={AdminSettingsPage} />
 
-      {/* Tenant Routes */}
-      <Route path="/" component={Dashboard} />
-      <Route path="/hosts" component={Hosts} />
-      <Route path="/hosts/:id" component={HostDetail} />
-      <Route path="/agents" component={Agents} />
-      <Route path="/alerts" component={Alerts} />
-      <Route path="/roadmap" component={Roadmap} />
-      <Route path="/settings" component={Settings} />
+      {/* Protected Tenant Routes */}
+      <Route path="/">
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/hosts">
+        <ProtectedRoute>
+          <Hosts />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/hosts/:id">
+        <ProtectedRoute>
+          <HostDetail />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/agents">
+        <ProtectedRoute>
+          <Agents />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/alerts">
+        <ProtectedRoute>
+          <Alerts />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/roadmap">
+        <ProtectedRoute>
+          <Roadmap />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings">
+        <ProtectedRoute>
+          <Settings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/organization-members">
+        <ProtectedRoute roles={["owner", "admin"]}>
+          <OrganizationMembersPage />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/organization-settings">
+        <ProtectedRoute roles={["owner", "admin"]}>
+          <OrganizationSettingsPage />
+        </ProtectedRoute>
+      </Route>
+
       <Route component={NotFound} />
     </Switch>
   );
@@ -115,10 +168,12 @@ function App() {
       <ThemeProvider defaultTheme="system" storageKey="sentinel-theme">
         <TooltipProvider>
           <AuthContext.Provider value={{ adminToken, setAdminToken }}>
-            <OrganizationProvider>
-              <AppContent />
-              <Toaster />
-            </OrganizationProvider>
+            <UserContextProvider>
+              <OrganizationProvider>
+                <AppContent />
+                <Toaster />
+              </OrganizationProvider>
+            </UserContextProvider>
           </AuthContext.Provider>
         </TooltipProvider>
       </ThemeProvider>

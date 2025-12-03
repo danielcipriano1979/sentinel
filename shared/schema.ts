@@ -112,6 +112,74 @@ export const organizations = pgTable("organizations", {
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   hosts: many(hosts),
   customFieldDefinitions: many(customFieldDefinitions),
+  users: many(organizationUsers),
+  plans: many(organizationPlans),
+}));
+
+// Organization Users - team members with roles
+export const organizationUsers = pgTable("organization_users", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  passwordHash: text("password_hash").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  role: text("role").notNull().default("member"), // owner, admin, member, viewer
+  emailVerified: boolean("email_verified").default(false),
+  lastLoginAt: timestamp("last_login_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  // Composite unique constraint: one email per organization
+  // (handled in migration, not in schema constraint)
+});
+
+export const organizationUsersRelations = relations(organizationUsers, ({ one, many }) => ({
+  organization: one(organizations, {
+    fields: [organizationUsers.organizationId],
+    references: [organizations.id],
+  }),
+  sessions: many(organizationSessions),
+}));
+
+// Organization User Sessions - for JWT/session management
+export const organizationSessions = pgTable("organization_sessions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").notNull().references(() => organizationUsers.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const organizationSessionsRelations = relations(organizationSessions, ({ one }) => ({
+  user: one(organizationUsers, {
+    fields: [organizationSessions.userId],
+    references: [organizationUsers.id],
+  }),
+}));
+
+// User Invitations - for email-based team member onboarding
+export const userInvitations = pgTable("user_invitations", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  role: text("role").notNull().default("member"), // owner, admin, member, viewer
+  invitedBy: uuid("invited_by").references(() => organizationUsers.id, { onDelete: "set null" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  acceptedAt: timestamp("accepted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userInvitationsRelations = relations(userInvitations, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [userInvitations.organizationId],
+    references: [organizations.id],
+  }),
+  invitedByUser: one(organizationUsers, {
+    fields: [userInvitations.invitedBy],
+    references: [organizationUsers.id],
+  }),
 }));
 
 // Hosts - registered machines being monitored
@@ -290,6 +358,26 @@ export const insertOrganizationSchema = createInsertSchema(organizations).omit({
   createdAt: true,
 });
 
+export const insertOrganizationUserSchema = createInsertSchema(organizationUsers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastLoginAt: true,
+  emailVerified: true,
+});
+
+export const insertOrganizationSessionSchema = createInsertSchema(organizationSessions).omit({
+  id: true,
+  createdAt: true,
+  revokedAt: true,
+});
+
+export const insertUserInvitationSchema = createInsertSchema(userInvitations).omit({
+  id: true,
+  createdAt: true,
+  acceptedAt: true,
+});
+
 export const insertHostSchema = createInsertSchema(hosts).omit({
   id: true,
   createdAt: true,
@@ -342,6 +430,15 @@ export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+
+export type OrganizationUser = typeof organizationUsers.$inferSelect;
+export type InsertOrganizationUser = z.infer<typeof insertOrganizationUserSchema>;
+
+export type OrganizationSession = typeof organizationSessions.$inferSelect;
+export type InsertOrganizationSession = z.infer<typeof insertOrganizationSessionSchema>;
+
+export type UserInvitation = typeof userInvitations.$inferSelect;
+export type InsertUserInvitation = z.infer<typeof insertUserInvitationSchema>;
 
 export type Host = typeof hosts.$inferSelect;
 export type InsertHost = z.infer<typeof insertHostSchema>;
