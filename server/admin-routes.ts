@@ -261,12 +261,53 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Update tenant status or general info
+  app.patch("/api/admin/tenants/:id", verifyAdminToken, async (req, res) => {
+    try {
+      const { status } = req.body;
+      const adminId = (req as any).admin.adminUserId;
+
+      if (!status) {
+        return res.status(400).json({ error: "Status required" });
+      }
+
+      if (!["active", "suspended", "canceled", "deactivated"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      const org = await storage.getOrganization(req.params.id);
+      if (!org) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      await storage.updateOrganizationPlanStatus(req.params.id, status);
+
+      // Log audit event
+      await storage.createAuditLog({
+        adminUserId: adminId,
+        action: status === "suspended" ? "suspend_org" : `${status}_org`,
+        resource: "organization",
+        resourceId: req.params.id,
+        organizationId: req.params.id as any,
+        changes: { status },
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      res.json({ message: `Organization ${status}` });
+    } catch (error) {
+      console.error("Error updating tenant:", error);
+      res.status(500).json({ error: "Failed to update tenant" });
+    }
+  });
+
+  // Keep the old status endpoint for backward compatibility
   app.patch("/api/admin/tenants/:id/status", verifyAdminToken, async (req, res) => {
     try {
       const { status } = req.body;
       const adminId = (req as any).admin.adminUserId;
 
-      if (!["active", "suspended", "canceled"].includes(status)) {
+      if (!["active", "suspended", "canceled", "deactivated"].includes(status)) {
         return res.status(400).json({ error: "Invalid status" });
       }
 
@@ -417,6 +458,197 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error("Error creating plan:", error);
       res.status(500).json({ error: "Failed to create plan" });
+    }
+  });
+
+  // ==================== Tenant Users ====================
+
+  // Get tenant users
+  app.get("/api/admin/tenants/:id/users", verifyAdminToken, async (req, res) => {
+    try {
+      const tenantId = req.params.id;
+      const org = await storage.getOrganization(tenantId);
+      if (!org) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      // Return mock users data for now
+      // In a real implementation, this would fetch from the database
+      res.json({
+        users: [
+          {
+            id: "user-1",
+            email: "admin@example.com",
+            firstName: "Admin",
+            lastName: "User",
+            role: "owner",
+            status: "active",
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      });
+    } catch (error) {
+      console.error("Error fetching tenant users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Add tenant user
+  app.post("/api/admin/tenants/:id/users", verifyAdminToken, async (req, res) => {
+    try {
+      const { email, role, password } = req.body;
+      const adminId = (req as any).admin.adminUserId;
+      const tenantId = req.params.id;
+
+      if (!email || !role || !password) {
+        return res.status(400).json({
+          error: "Email, role, and password required",
+        });
+      }
+
+      // In a real implementation, create the user in the database
+      // For now, return mock response
+      res.status(201).json({
+        id: "user-new",
+        email,
+        firstName: "",
+        lastName: "",
+        role,
+        status: "active",
+        createdAt: new Date().toISOString(),
+      });
+
+      // Log audit event
+      await storage.createAuditLog({
+        adminUserId: adminId,
+        action: "create_user",
+        resource: "user",
+        resourceId: "user-new",
+        organizationId: tenantId as any,
+        changes: { email, role },
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+    } catch (error) {
+      console.error("Error adding user:", error);
+      res.status(500).json({ error: "Failed to add user" });
+    }
+  });
+
+  // Update tenant user
+  app.patch("/api/admin/tenants/:id/users/:userId", verifyAdminToken, async (req, res) => {
+    try {
+      const { role, status } = req.body;
+      const adminId = (req as any).admin.adminUserId;
+      const tenantId = req.params.id;
+      const userId = req.params.userId;
+
+      if (!role && !status) {
+        return res.status(400).json({ error: "Role or status required" });
+      }
+
+      // In a real implementation, update the user in the database
+      // For now, return mock response
+      res.json({
+        id: userId,
+        email: "user@example.com",
+        firstName: "John",
+        lastName: "Doe",
+        role: role || "member",
+        status: status || "active",
+        createdAt: new Date().toISOString(),
+      });
+
+      // Log audit event
+      await storage.createAuditLog({
+        adminUserId: adminId,
+        action: "update_user",
+        resource: "user",
+        resourceId: userId,
+        organizationId: tenantId as any,
+        changes: { role, status },
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ error: "Failed to update user" });
+    }
+  });
+
+  // Delete tenant user
+  app.delete("/api/admin/tenants/:id/users/:userId", verifyAdminToken, async (req, res) => {
+    try {
+      const adminId = (req as any).admin.adminUserId;
+      const tenantId = req.params.id;
+      const userId = req.params.userId;
+
+      // In a real implementation, delete the user from the database
+      // For now, return mock response
+      res.json({ success: true });
+
+      // Log audit event
+      await storage.createAuditLog({
+        adminUserId: adminId,
+        action: "delete_user",
+        resource: "user",
+        resourceId: userId,
+        organizationId: tenantId as any,
+        changes: { deleted: true },
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  });
+
+  // ==================== Tenant Billing ====================
+
+  // Get tenant billing info
+  app.get("/api/admin/tenants/:id/billing", verifyAdminToken, async (req, res) => {
+    try {
+      const tenantId = req.params.id;
+      const org = await storage.getOrganization(tenantId);
+      if (!org) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      // Return mock billing data for now
+      // In a real implementation, fetch actual billing data
+      const startDate = new Date();
+      startDate.setDate(1);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+      const daysRemaining = Math.ceil(
+        (endDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      res.json({
+        currentPlan: {
+          name: "professional",
+          monthlyPrice: 9900,
+        },
+        billingCycle: {
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          daysRemaining,
+        },
+        invoices: [
+          {
+            id: "inv-001",
+            date: new Date().toISOString(),
+            amount: 9900,
+            status: "paid",
+            dueDate: new Date().toISOString(),
+          },
+        ],
+        totalSpend: 9900,
+      });
+    } catch (error) {
+      console.error("Error fetching billing info:", error);
+      res.status(500).json({ error: "Failed to fetch billing" });
     }
   });
 

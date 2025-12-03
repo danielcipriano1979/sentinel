@@ -24,6 +24,9 @@ import { AdminTenantsPage } from "@/pages/admin-tenants";
 import { AdminTenantDetailsPage } from "@/pages/admin-tenant-details";
 import { AdminAuditLogsPage } from "@/pages/admin-audit-logs";
 import { AdminSettingsPage } from "@/pages/admin-settings";
+import { AdminTenantUsersPage } from "@/pages/admin-tenant-users";
+import { AdminTenantSettingsPage } from "@/pages/admin-tenant-settings";
+import { AdminTenantBillingPage } from "@/pages/admin-tenant-billing";
 import { LoginPage } from "@/pages/login";
 import { RegisterPage } from "@/pages/register";
 import { InvitePage } from "@/pages/invite";
@@ -48,6 +51,9 @@ function Router() {
       <Route path="/admin" component={AdminDashboardPage} />
       <Route path="/admin/tenants" component={AdminTenantsPage} />
       <Route path="/admin/tenants/:id" component={AdminTenantDetailsPage} />
+      <Route path="/admin/tenants/:id/users" component={AdminTenantUsersPage} />
+      <Route path="/admin/tenants/:id/settings" component={AdminTenantSettingsPage} />
+      <Route path="/admin/tenants/:id/billing" component={AdminTenantBillingPage} />
       <Route path="/admin/audit-logs" component={AdminAuditLogsPage} />
       <Route path="/admin/settings" component={AdminSettingsPage} />
 
