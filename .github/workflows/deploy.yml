@@ -12,6 +12,10 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
+    - name: Set Image Tag
+      id: vars
+      run: echo "IMAGE_TAG=${{ github.sha }}" >> $GITHUB_OUTPUT
+
     - name: Login to Docker Hub
       uses: docker/login-action@v3
       with:
@@ -19,14 +23,18 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
 
     - name: Build Docker Image
-      run: docker build -t ${{ secrets.DOCKER_USERNAME }}/sentinel:latest .
+      run: |
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/sentinel:${{ steps.vars.outputs.IMAGE_TAG }} .
+        docker tag ${{ secrets.DOCKER_USERNAME }}/sentinel:${{ steps.vars.outputs.IMAGE_TAG }} ${{ secrets.DOCKER_USERNAME }}/sentinel:latest
 
-    - name: Push Docker Image
-      run: docker push ${{ secrets.DOCKER_USERNAME }}/sentinel:latest
+    - name: Push Docker Images
+      run: |
+        docker push ${{ secrets.DOCKER_USERNAME }}/sentinel:${{ steps.vars.outputs.IMAGE_TAG }}
+        docker push ${{ secrets.DOCKER_USERNAME }}/sentinel:latest
 
     - name: Prepare Kubernetes config
       run: |
-        mkdir ~/.kube
+        mkdir -p ~/.kube
         echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
 
     - name: Create/Update Secret with Environment Variables
@@ -45,3 +53,7 @@ jobs:
       run: |
         kubectl apply -f k8s/deployment.yaml
         kubectl apply -f k8s/service.yaml
+
+    - name: Update Deployment Image
+      run: |
+        kubectl set image deployment/sentinel sentinel=${{ secrets.DOCKER_USERNAME }}/sentinel:${{ steps.vars.outputs.IMAGE_TAG }}
