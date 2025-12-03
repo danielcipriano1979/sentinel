@@ -143,8 +143,8 @@ export function AdminTenantSettingsPage() {
             <CardContent className="space-y-6">
               <div>
                 <div className="text-sm text-gray-600 mb-2">Status</div>
-                <Badge className={statusColors[tenant.status]}>
-                  {tenant.status.charAt(0).toUpperCase() + tenant.status.slice(1)}
+                <Badge className={statusColors[tenant.status] || "bg-gray-100 text-gray-800"}>
+                  {tenant.status ? tenant.status.charAt(0).toUpperCase() + tenant.status.slice(1) : "Unknown"}
                 </Badge>
               </div>
 

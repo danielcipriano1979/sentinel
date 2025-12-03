@@ -250,7 +250,7 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
 
       res.json({
         ...org,
-        status: plan?.status || "unknown",
+        status: plan?.status || "active",
         plan: plan ? await storage.getSubscriptionPlan(plan.planId) : null,
         hostCount: hosts.length,
         activeAlerts: alerts.filter((a) => a.status === "active").length,
