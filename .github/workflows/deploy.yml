@@ -55,7 +55,17 @@ jobs:
           --from-literal=PORT="${{ secrets.PORT }}" \
           --from-literal=NODE_ENV="${{ secrets.NODE_ENV }}" \
           --from-literal=SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \
-          --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}"
+          --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+          --from-literal=REDIS_URL="${{ secrets.REDIS_URL }}" \
+          --from-literal=REDIS_HOST="${{ secrets.REDIS_HOST }}" \
+          --from-literal=REDIS_PORT="${{ secrets.REDIS_PORT }}" \
+          --from-literal=REDIS_PASSWORD="${{ secrets.REDIS_PASSWORD }}" \
+          --from-literal=REDIS_DB="${{ secrets.REDIS_DB }}" \
+          --from-literal=REDIS_CONNECT_TIMEOUT="${{ secrets.REDIS_CONNECT_TIMEOUT }}" \
+          --from-literal=REDIS_RETRY_STRATEGY="${{ secrets.REDIS_RETRY_STRATEGY }}" \
+          --from-literal=REDIS_MAX_RETRIES_PER_REQUEST="${{ secrets.REDIS_MAX_RETRIES_PER_REQUEST }}" \
+          --from-literal=REDIS_METRICS_RETENTION_DAYS="${{ secrets.REDIS_METRICS_RETENTION_DAYS }}" \
+          --from-literal=REDIS_BATCH_WRITE_INTERVAL_MS="${{ secrets.REDIS_BATCH_WRITE_INTERVAL_MS }}"
 
     - name: Apply Kubernetes manifests
       run: |

@@ -175,6 +175,98 @@ export async function registerRoutes(
     }
   });
 
+  // ==================== Metrics (Redis-backed) ====================
+
+  /**
+   * Get metrics for a host within a time range
+   * Query params:
+   *   - startTime: timestamp in milliseconds (required)
+   *   - endTime: timestamp in milliseconds (optional, defaults to now)
+   *   - limit: max number of results (optional, default 1000)
+   */
+  app.get("/api/hosts/:id/metrics/range", async (req, res) => {
+    try {
+      const orgId = req.query.orgId as string;
+      const startTime = parseInt(req.query.startTime as string);
+      const endTime = req.query.endTime ? parseInt(req.query.endTime as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 1000;
+
+      // Validate required parameters
+      if (!orgId) {
+        return res.status(400).json({ error: "Organization ID required" });
+      }
+      if (isNaN(startTime)) {
+        return res.status(400).json({ error: "Valid startTime required (milliseconds)" });
+      }
+
+      // Validate organization ownership
+      const host = await storage.getHost(req.params.id);
+      if (!host) {
+        return res.status(404).json({ error: "Host not found" });
+      }
+      if (host.organizationId !== orgId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      // Limit query range to prevent excessive memory usage
+      const maxRangeMs = 90 * 24 * 60 * 60 * 1000; // 90 days
+      const actualEndTime = endTime || Date.now();
+      if (actualEndTime - startTime > maxRangeMs) {
+        return res.status(400).json({
+          error: "Time range too large (max 90 days)",
+        });
+      }
+
+      const metrics = await metricsStore.getMetricsRange(
+        req.params.id,
+        startTime,
+        actualEndTime,
+        Math.min(limit, 10000) // Cap at 10k results
+      );
+
+      res.json({ metrics, count: metrics.length });
+    } catch (error) {
+      console.error("Error fetching metrics range:", error);
+      res.status(500).json({ error: "Failed to fetch metrics" });
+    }
+  });
+
+  /**
+   * Get recent metrics for a host
+   * Query params:
+   *   - count: number of recent metrics (optional, default 100, max 1000)
+   */
+  app.get("/api/hosts/:id/metrics/recent", async (req, res) => {
+    try {
+      const orgId = req.query.orgId as string;
+      const count = req.query.count ? parseInt(req.query.count as string) : 100;
+
+      // Validate required parameters
+      if (!orgId) {
+        return res.status(400).json({ error: "Organization ID required" });
+      }
+
+      // Validate organization ownership
+      const host = await storage.getHost(req.params.id);
+      if (!host) {
+        return res.status(404).json({ error: "Host not found" });
+      }
+      if (host.organizationId !== orgId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const metrics = await metricsStore.getRecentMetrics(
+        req.params.id,
+        Math.min(Math.max(count, 1), 1000) // Clamp between 1 and 1000
+      );
+
+      res.json({ metrics, count: metrics.length });
+    } catch (error) {
+      console.error("Error fetching recent metrics:", error);
+      res.status(500).json({ error: "Failed to fetch metrics" });
+    }
+  });
+
   // ==================== Agents ====================
   
   app.get("/api/agents", async (req, res) => {

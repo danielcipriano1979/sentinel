@@ -117,33 +117,100 @@ export interface IStorage {
   getAuditLogs(filters?: { adminUserId?: string; organizationId?: string; limit?: number }): Promise<AuditLog[]>;
 }
 
-// In-memory metrics storage (not persisted to database)
+/**
+ * Hybrid metrics storage: In-memory cache + Redis persistence
+ * - In-memory: Fast access to recent metrics (last 5 minutes)
+ * - Redis: Persistent storage of all metrics with configurable retention
+ */
 class MetricsStore {
   private metrics: Map<string, HostMetrics[]> = new Map();
-  private maxHistory = 60; // Keep 60 data points (5 minutes at 5-second intervals)
+  private maxHistory = 60; // Keep 60 data points in memory (5 minutes at 5-second intervals)
+  private redisService: typeof import("./metrics-service").metricsService | null = null;
+  private batchWriteTimer: NodeJS.Timeout | null = null;
 
+  /**
+   * Initialize Redis service
+   * Called after Redis client is connected
+   */
+  async initializeRedis() {
+    try {
+      const { metricsService } = await import("./metrics-service");
+      this.redisService = metricsService;
+
+      // Start periodic batch write to Redis
+      this.startBatchWrite();
+    } catch (error) {
+      console.warn("Redis metrics service not initialized, using in-memory only:", error);
+    }
+  }
+
+  /**
+   * Start periodic batch write to Redis (every 30 seconds)
+   */
+  private startBatchWrite() {
+    if (this.batchWriteTimer) return;
+
+    this.batchWriteTimer = setInterval(async () => {
+      if (!this.redisService) return;
+
+      try {
+        // Get all current metrics and write to Redis
+        const latestMetrics = this.getAllLatestMetrics();
+        const metricsMap = new Map(Object.entries(latestMetrics));
+
+        if (metricsMap.size > 0) {
+          await this.redisService!.storeMetricsBatch(metricsMap);
+        }
+      } catch (error) {
+        console.error("Failed to batch write metrics to Redis:", error);
+      }
+    }, 30000); // Every 30 seconds
+  }
+
+  /**
+   * Stop batch write timer
+   */
+  stopBatchWrite() {
+    if (this.batchWriteTimer) {
+      clearInterval(this.batchWriteTimer);
+      this.batchWriteTimer = null;
+    }
+  }
+
+  /**
+   * Add metrics to in-memory store and schedule Redis persistence
+   */
   addMetrics(hostId: string, metrics: HostMetrics): void {
     const hostMetrics = this.metrics.get(hostId) || [];
     hostMetrics.push(metrics);
-    
-    // Keep only the last N data points
+
+    // Keep only the last N data points in memory
     if (hostMetrics.length > this.maxHistory) {
       hostMetrics.shift();
     }
-    
+
     this.metrics.set(hostId, hostMetrics);
   }
 
+  /**
+   * Get metrics from in-memory cache
+   */
   getMetrics(hostId: string): HostMetrics[] {
     return this.metrics.get(hostId) || [];
   }
 
+  /**
+   * Get latest metric from in-memory cache
+   */
   getLatestMetrics(hostId: string): HostMetrics | undefined {
     const hostMetrics = this.metrics.get(hostId);
     if (!hostMetrics || hostMetrics.length === 0) return undefined;
     return hostMetrics[hostMetrics.length - 1];
   }
 
+  /**
+   * Get all latest metrics from in-memory cache
+   */
   getAllLatestMetrics(): Record<string, HostMetrics> {
     const result: Record<string, HostMetrics> = {};
     const entries = Array.from(this.metrics.entries());
@@ -153,6 +220,61 @@ class MetricsStore {
       }
     }
     return result;
+  }
+
+  /**
+   * Get metrics from Redis for a specific time range
+   * Falls back to in-memory if Redis is not available
+   */
+  async getMetricsRange(
+    hostId: string,
+    startTime: number,
+    endTime?: number
+  ): Promise<HostMetrics[]> {
+    if (!this.redisService) {
+      return this.getMetrics(hostId);
+    }
+
+    try {
+      return await this.redisService.getMetricsRange(hostId, startTime, endTime);
+    } catch (error) {
+      console.error(`Failed to get metrics range from Redis, falling back to memory:`, error);
+      return this.getMetrics(hostId);
+    }
+  }
+
+  /**
+   * Get recent metrics from Redis
+   */
+  async getRecentMetrics(hostId: string, count: number = 100): Promise<HostMetrics[]> {
+    if (!this.redisService) {
+      return this.getMetrics(hostId).slice(-count);
+    }
+
+    try {
+      return await this.redisService.getRecentMetrics(hostId, count);
+    } catch (error) {
+      console.error(`Failed to get recent metrics from Redis, falling back to memory:`, error);
+      return this.getMetrics(hostId).slice(-count);
+    }
+  }
+
+  /**
+   * Force write all metrics to Redis immediately
+   */
+  async flushToRedis(): Promise<void> {
+    if (!this.redisService) return;
+
+    try {
+      const latestMetrics = this.getAllLatestMetrics();
+      const metricsMap = new Map(Object.entries(latestMetrics));
+
+      if (metricsMap.size > 0) {
+        await this.redisService.storeMetricsBatch(metricsMap);
+      }
+    } catch (error) {
+      console.error("Failed to flush metrics to Redis:", error);
+    }
   }
 }
 
