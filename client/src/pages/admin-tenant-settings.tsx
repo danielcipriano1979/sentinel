@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, Copy, Check } from "lucide-react";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import {
   Dialog,
@@ -23,6 +23,32 @@ interface TenantInfo {
   slug: string;
   status: "active" | "suspended" | "deactivated";
   createdAt: string;
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={handleCopy}
+      title="Copy to clipboard"
+      className="flex-shrink-0"
+    >
+      {copied ? (
+        <Check className="h-4 w-4 text-green-600" />
+      ) : (
+        <Copy className="h-4 w-4" />
+      )}
+    </Button>
+  );
 }
 
 export function AdminTenantSettingsPage() {
@@ -258,10 +284,13 @@ export function AdminTenantSettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-gray-600">Tenant ID</label>
-                <p className="font-mono text-sm bg-gray-50 p-2 rounded mt-1">
-                  {tenant.id}
-                </p>
+                <label className="text-sm font-medium text-gray-700">Tenant ID</label>
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex-1 font-mono text-base bg-muted border border-border rounded-md p-3 break-all">
+                    {tenant.id}
+                  </div>
+                  <CopyButton text={tenant.id} />
+                </div>
               </div>
 
               <div>
