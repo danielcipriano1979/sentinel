@@ -4,6 +4,7 @@ import { useOrganization } from "@/lib/organization-context";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { UserProfile } from "@/components/user-profile";
 import { AddOrganizationDialog } from "@/components/add-organization-dialog";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -61,8 +62,9 @@ export function AppLayout({ children }: AppLayoutProps) {
               <div className="flex items-center gap-2">
                 {showSidebar && <SidebarTrigger data-testid="button-sidebar-toggle" />}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <ThemeToggle />
+                {showSidebar && <UserProfile />}
               </div>
             </header>
             <main className="flex-1 overflow-auto">
