@@ -68,13 +68,18 @@ export function AdminTenantSettingsPage() {
     },
     onSuccess: () => {
       setSuccess("Tenant status updated");
+      // Invalidate both the specific tenant and the tenants list
       queryClient.invalidateQueries({
         queryKey: [`admin-tenant-settings-${id}`],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["admin-tenants"],
       });
       setTimeout(() => setSuccess(""), 3000);
     },
     onError: (error: any) => {
       setError(error.message);
+      setTimeout(() => setError(""), 5000);
     },
   });
 

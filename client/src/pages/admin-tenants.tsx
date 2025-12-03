@@ -63,7 +63,7 @@ export function AdminTenantsPage() {
     }
 
     try {
-      const response = await fetch(`/api/admin/tenants/${tenantId}/status`, {
+      const response = await fetch(`/api/admin/tenants/${tenantId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -72,11 +72,15 @@ export function AdminTenantsPage() {
         body: JSON.stringify({ status: "suspended" }),
       });
 
-      if (response.ok) {
-        refetch();
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to suspend tenant");
       }
+
+      await refetch();
     } catch (error) {
       console.error("Failed to suspend tenant:", error);
+      alert(`Error: ${error instanceof Error ? error.message : "Failed to suspend tenant"}`);
     }
   };
 
@@ -86,7 +90,7 @@ export function AdminTenantsPage() {
     }
 
     try {
-      const response = await fetch(`/api/admin/tenants/${tenantId}/status`, {
+      const response = await fetch(`/api/admin/tenants/${tenantId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -95,11 +99,15 @@ export function AdminTenantsPage() {
         body: JSON.stringify({ status: "active" }),
       });
 
-      if (response.ok) {
-        refetch();
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to reactivate tenant");
       }
+
+      await refetch();
     } catch (error) {
       console.error("Failed to reactivate tenant:", error);
+      alert(`Error: ${error instanceof Error ? error.message : "Failed to reactivate tenant"}`);
     }
   };
 
