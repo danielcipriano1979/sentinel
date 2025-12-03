@@ -10,6 +10,7 @@ interface AdminLayoutProps {
   title?: string;
   description?: string;
   showBackButton?: boolean;
+  backTo?: string;
 }
 
 export function AdminLayout({
@@ -17,6 +18,7 @@ export function AdminLayout({
   title,
   description,
   showBackButton = false,
+  backTo = "/admin",
 }: AdminLayoutProps) {
   const { adminToken } = useAuthContext();
   const [, navigate] = useLocation();
@@ -27,7 +29,7 @@ export function AdminLayout({
   }
 
   const handleBack = () => {
-    navigate(-1 as any);
+    navigate(backTo);
   };
 
   return (
