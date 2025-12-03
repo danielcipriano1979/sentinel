@@ -330,6 +330,57 @@ export async function registerUserRoutes(app: Express): Promise<void> {
   });
 
   /**
+   * Update user profile
+   * PATCH /api/auth/me
+   * Body: { firstName?, lastName?, jobTitle? }
+   */
+  app.patch("/api/auth/me", verifyUserToken, async (req: Request, res: Response) => {
+    try {
+      const { firstName, lastName, jobTitle } = req.body;
+      const userId = req.user?.userId;
+      const organizationId = req.user?.organizationId;
+
+      if (!userId || !organizationId) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      // Find user in organization
+      const user = await storage.getOrganizationUsers(organizationId);
+      const currentUser = user.find((u: any) => u.id === userId);
+
+      if (!currentUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      // Update user profile
+      const updatedUser = await storage.updateOrganizationUser(userId, organizationId, {
+        firstName: firstName?.trim() || currentUser.firstName,
+        lastName: lastName?.trim() || currentUser.lastName,
+        // jobTitle would be added here if the schema is updated
+      });
+
+      if (!updatedUser) {
+        return res.status(400).json({ error: "Failed to update profile" });
+      }
+
+      res.json({
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          firstName: updatedUser.firstName,
+          lastName: updatedUser.lastName,
+          role: updatedUser.role,
+          organizationId: updatedUser.organizationId,
+        },
+        message: "Profile updated successfully",
+      });
+    } catch (error: any) {
+      console.error("Update profile error:", error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  /**
    * Register with invitation token
    * POST /api/auth/register/invitation
    * Body: { invitationToken, password, firstName, lastName }

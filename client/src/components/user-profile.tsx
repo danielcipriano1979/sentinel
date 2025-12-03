@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useUser } from "@/hooks/useUser";
 import { useLocation } from "wouter";
 import {
@@ -9,11 +10,13 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Settings, LogOut } from "lucide-react";
+import { UserProfileModal } from "@/components/user-profile-modal";
+import { User, Settings, LogOut } from "lucide-react";
 
 export function UserProfile() {
   const { user, logout } = useUser();
   const [, navigate] = useLocation();
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   if (!user) {
     return null;
@@ -29,6 +32,10 @@ export function UserProfile() {
 
   const handleSettings = () => {
     navigate("/settings");
+  };
+
+  const handleProfileEdit = () => {
+    setProfileModalOpen(true);
   };
 
   return (
@@ -65,6 +72,11 @@ export function UserProfile() {
 
         <DropdownMenuSeparator />
 
+        <DropdownMenuItem onClick={handleProfileEdit}>
+          <User className="mr-2 h-4 w-4" />
+          <span>My Profile</span>
+        </DropdownMenuItem>
+
         <DropdownMenuItem onClick={handleSettings}>
           <Settings className="mr-2 h-4 w-4" />
           <span>Settings</span>
@@ -77,6 +89,8 @@ export function UserProfile() {
           <span>Logout</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
+
+      <UserProfileModal open={profileModalOpen} onOpenChange={setProfileModalOpen} />
     </DropdownMenu>
   );
 }

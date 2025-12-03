@@ -121,7 +121,7 @@ export interface IStorage {
   getOrganizationUsers(organizationId: string): Promise<any[]>;
   getUserOrganizations(email: string): Promise<any[]>;
   createOrganizationUser(organizationId: string, email: string, passwordHash: string, role: string, firstName?: string, lastName?: string): Promise<any>;
-  updateOrganizationUser(userId: string, organizationId: string, updates: { role?: string; status?: string }): Promise<any | undefined>;
+  updateOrganizationUser(userId: string, organizationId: string, updates: { role?: string; status?: string; firstName?: string; lastName?: string }): Promise<any | undefined>;
   updateOrganizationUserRole(userId: string, organizationId: string, role: string): Promise<any | undefined>;
   removeOrganizationUser(userId: string, organizationId: string): Promise<void>;
 
@@ -680,13 +680,15 @@ export class DatabaseStorage implements IStorage {
   async updateOrganizationUser(
     userId: string,
     organizationId: string,
-    updates: { role?: string; status?: string }
+    updates: { role?: string; status?: string; firstName?: string; lastName?: string }
   ): Promise<any | undefined> {
     const { organizationUsers } = await import("@shared/schema");
     const { eq, and } = await import("drizzle-orm");
     const updateData: any = { updatedAt: new Date() };
     if (updates.role) updateData.role = updates.role;
     if (updates.status) updateData.status = updates.status;
+    if (updates.firstName !== undefined) updateData.firstName = updates.firstName;
+    if (updates.lastName !== undefined) updateData.lastName = updates.lastName;
 
     const [updated] = await db
       .update(organizationUsers)
