@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuthContext } from "@/hooks/useAuthContext";
+import { AdminLayout } from "@/components/AdminLayout";
 import {
   Select,
   SelectContent,
@@ -118,15 +119,12 @@ export function AdminTenantsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-4xl font-bold text-gray-900">Tenants Management</h1>
-          <p className="text-gray-600 mt-1">Manage and monitor all tenant organizations</p>
-        </div>
-        <Button onClick={() => navigate("/admin")}>Back to Dashboard</Button>
-      </div>
+    <AdminLayout
+      title="Tenants Management"
+      description="Manage and monitor all tenant organizations"
+      showBackButton={true}
+    >
+      <div className="p-6 space-y-6">
 
       {/* Filters */}
       <Card className="p-6 border border-gray-200 shadow-sm">
@@ -304,6 +302,7 @@ export function AdminTenantsPage() {
           </div>
         </div>
       </Card>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }

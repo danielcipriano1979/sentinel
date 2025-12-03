@@ -48,6 +48,27 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
     }
   });
 
+  // Get current admin user info
+  app.get("/api/admin/me", verifyAdminToken, async (req, res) => {
+    try {
+      const admin = await storage.getAdminUserByEmail((req as any).admin.email);
+      if (!admin) {
+        return res.status(404).json({ error: "Admin user not found" });
+      }
+
+      res.json({
+        id: admin.id,
+        email: admin.email,
+        firstName: admin.firstName,
+        lastName: admin.lastName,
+        mfaEnabled: admin.mfaEnabled,
+      });
+    } catch (error) {
+      console.error("Error fetching admin info:", error);
+      res.status(500).json({ error: "Failed to fetch admin info" });
+    }
+  });
+
   app.post("/api/admin/auth/register", async (req, res) => {
     try {
       const { email, password, firstName, lastName } = req.body;

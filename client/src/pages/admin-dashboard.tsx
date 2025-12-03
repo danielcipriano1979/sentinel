@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { useLocation } from "wouter";
+import { AdminLayout } from "@/components/AdminLayout";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
 
 interface Tenant {
@@ -74,12 +75,11 @@ export function AdminDashboardPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <Button onClick={() => navigate("/admin/settings")}>Settings</Button>
-      </div>
+    <AdminLayout
+      title="Admin Dashboard"
+      description="Manage tenants and monitor system health"
+    >
+      <div className="p-6 space-y-6">
 
       {/* Stats Cards */}
       {stats && (
@@ -214,6 +214,7 @@ export function AdminDashboardPage() {
           </div>
         </Card>
       </div>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }

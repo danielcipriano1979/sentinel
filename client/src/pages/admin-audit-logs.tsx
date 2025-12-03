@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuthContext } from "@/hooks/useAuthContext";
+import { AdminLayout } from "@/components/AdminLayout";
 import {
   Select,
   SelectContent,
@@ -80,11 +81,12 @@ export function AdminAuditLogsPage() {
   const uniqueOrgs = Array.from(new Set(logs.map((log) => log.organizationId))).filter(Boolean);
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Audit Logs</h1>
-        <Button onClick={() => navigate("/admin")}>Back to Dashboard</Button>
-      </div>
+    <AdminLayout
+      title="Audit Logs"
+      description="View system-wide audit trail and admin actions"
+      showBackButton={true}
+    >
+      <div className="p-6 space-y-6">
 
       {/* Filters */}
       <Card className="p-4">
@@ -244,6 +246,7 @@ export function AdminAuditLogsPage() {
           Export as CSV
         </Button>
       </div>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }

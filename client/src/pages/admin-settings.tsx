@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuthContext } from "@/hooks/useAuthContext";
+import { AdminLayout } from "@/components/AdminLayout";
 import {
   Dialog,
   DialogContent,
@@ -145,11 +146,12 @@ export function AdminSettingsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">System Settings</h1>
-        <Button onClick={() => navigate("/admin")}>Back to Dashboard</Button>
-      </div>
+    <AdminLayout
+      title="System Settings"
+      description="Manage admin account and system configuration"
+      showBackButton={true}
+    >
+      <div className="p-6 space-y-6 max-w-4xl mx-auto">
 
       {/* Account Settings */}
       <Card className="p-6">
@@ -354,6 +356,7 @@ export function AdminSettingsPage() {
           ))}
         </div>
       </Card>
-    </div>
+      </div>
+    </AdminLayout>
   );
 }
