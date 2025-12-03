@@ -7,6 +7,11 @@ import {
   alertRules,
   notificationChannels,
   alerts,
+  adminUsers,
+  adminSessions,
+  subscriptionPlans,
+  organizationPlans,
+  auditLogs,
   type Organization,
   type InsertOrganization,
   type Host,
@@ -25,6 +30,16 @@ import {
   type InsertAlert,
   type HostWithAgent,
   type HostMetrics,
+  type AdminUser,
+  type InsertAdminUser,
+  type AdminSession,
+  type InsertAdminSession,
+  type SubscriptionPlan,
+  type InsertSubscriptionPlan,
+  type OrganizationPlan,
+  type InsertOrganizationPlan,
+  type AuditLog,
+  type InsertAuditLog,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -75,6 +90,31 @@ export interface IStorage {
   getAlert(id: string): Promise<Alert | undefined>;
   createAlert(alert: InsertAlert): Promise<Alert>;
   updateAlertStatus(id: string, status: string, resolvedAt?: Date): Promise<Alert | undefined>;
+
+  // Admin Users
+  getAdminUserByEmail(email: string): Promise<AdminUser | undefined>;
+  createAdminUser(user: InsertAdminUser): Promise<AdminUser>;
+  updateAdminUserMFA(adminUserId: string, mfaSecret: string | null, mfaEnabled: boolean): Promise<void>;
+  updateAdminUserLastLogin(adminUserId: string): Promise<void>;
+
+  // Admin Sessions
+  createAdminSession(session: InsertAdminSession): Promise<AdminSession>;
+  getAdminSession(token: string): Promise<AdminSession | undefined>;
+  revokeAdminSession(token: string): Promise<void>;
+
+  // Subscription Plans
+  getSubscriptionPlans(): Promise<SubscriptionPlan[]>;
+  getSubscriptionPlan(id: string): Promise<SubscriptionPlan | undefined>;
+  createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan>;
+
+  // Organization Plans
+  getOrganizationPlan(organizationId: string): Promise<OrganizationPlan | undefined>;
+  createOrganizationPlan(plan: InsertOrganizationPlan): Promise<OrganizationPlan>;
+  updateOrganizationPlanStatus(organizationId: string, status: string): Promise<void>;
+
+  // Audit Logs
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogs(filters?: { adminUserId?: string; organizationId?: string; limit?: number }): Promise<AuditLog[]>;
 }
 
 // In-memory metrics storage (not persisted to database)
@@ -344,6 +384,112 @@ export class DatabaseStorage implements IStorage {
       .where(eq(alerts.id, id))
       .returning();
     return updated || undefined;
+  }
+
+  // Admin Users
+  async getAdminUserByEmail(email: string): Promise<AdminUser | undefined> {
+    const [user] = await db.select().from(adminUsers).where(eq(adminUsers.email, email));
+    return user || undefined;
+  }
+
+  async createAdminUser(user: InsertAdminUser): Promise<AdminUser> {
+    const [created] = await db.insert(adminUsers).values(user).returning();
+    return created;
+  }
+
+  async updateAdminUserMFA(adminUserId: string, mfaSecret: string | null, mfaEnabled: boolean): Promise<void> {
+    await db
+      .update(adminUsers)
+      .set({ mfaSecret, mfaEnabled, updatedAt: new Date() })
+      .where(eq(adminUsers.id, adminUserId));
+  }
+
+  async updateAdminUserLastLogin(adminUserId: string): Promise<void> {
+    await db
+      .update(adminUsers)
+      .set({ lastLoginAt: new Date(), updatedAt: new Date() })
+      .where(eq(adminUsers.id, adminUserId));
+  }
+
+  // Admin Sessions
+  async createAdminSession(session: InsertAdminSession): Promise<AdminSession> {
+    const [created] = await db.insert(adminSessions).values(session).returning();
+    return created;
+  }
+
+  async getAdminSession(token: string): Promise<AdminSession | undefined> {
+    const [session] = await db.select().from(adminSessions).where(eq(adminSessions.token, token));
+    return session || undefined;
+  }
+
+  async revokeAdminSession(token: string): Promise<void> {
+    await db
+      .update(adminSessions)
+      .set({ revokedAt: new Date() })
+      .where(eq(adminSessions.token, token));
+  }
+
+  // Subscription Plans
+  async getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    return db.select().from(subscriptionPlans).where(eq(subscriptionPlans.isActive, true));
+  }
+
+  async getSubscriptionPlan(id: string): Promise<SubscriptionPlan | undefined> {
+    const [plan] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, id));
+    return plan || undefined;
+  }
+
+  async createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
+    const [created] = await db.insert(subscriptionPlans).values(plan).returning();
+    return created;
+  }
+
+  // Organization Plans
+  async getOrganizationPlan(organizationId: string): Promise<OrganizationPlan | undefined> {
+    const [plan] = await db.select().from(organizationPlans).where(eq(organizationPlans.organizationId, organizationId));
+    return plan || undefined;
+  }
+
+  async createOrganizationPlan(plan: InsertOrganizationPlan): Promise<OrganizationPlan> {
+    const [created] = await db.insert(organizationPlans).values(plan).returning();
+    return created;
+  }
+
+  async updateOrganizationPlanStatus(organizationId: string, status: string): Promise<void> {
+    await db
+      .update(organizationPlans)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(organizationPlans.organizationId, organizationId));
+  }
+
+  // Audit Logs
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const [created] = await db.insert(auditLogs).values(log).returning();
+    return created;
+  }
+
+  async getAuditLogs(filters?: { adminUserId?: string; organizationId?: string; limit?: number }): Promise<AuditLog[]> {
+    let query = db.select().from(auditLogs);
+
+    const whereConditions: any[] = [];
+    if (filters?.adminUserId) {
+      whereConditions.push(eq(auditLogs.adminUserId, filters.adminUserId));
+    }
+    if (filters?.organizationId) {
+      whereConditions.push(eq(auditLogs.organizationId, filters.organizationId));
+    }
+
+    if (whereConditions.length > 0) {
+      query = query.where(and(...whereConditions));
+    }
+
+    query = query.orderBy(desc(auditLogs.createdAt));
+
+    if (filters?.limit) {
+      return (query as any).limit(filters.limit);
+    }
+
+    return query;
   }
 }
 

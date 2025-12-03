@@ -1,7 +1,105 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, jsonb, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, jsonb, boolean, integer, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Admin Users - separate table for system administrators
+export const adminUsers = pgTable("admin_users", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  mfaEnabled: boolean("mfa_enabled").default(false),
+  mfaSecret: text("mfa_secret"), // TOTP secret
+  lastLoginAt: timestamp("last_login_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const adminUsersRelations = relations(adminUsers, ({ many }) => ({
+  sessions: many(adminSessions),
+  auditLogs: many(auditLogs),
+}));
+
+// Admin Sessions - for tracking JWT/session invalidation
+export const adminSessions = pgTable("admin_sessions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminUserId: uuid("admin_user_id").notNull().references(() => adminUsers.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const adminSessionsRelations = relations(adminSessions, ({ one }) => ({
+  adminUser: one(adminUsers, {
+    fields: [adminSessions.adminUserId],
+    references: [adminUsers.id],
+  }),
+}));
+
+// Subscription Plans
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(), // free, pro, enterprise
+  maxHosts: integer("max_hosts").notNull(),
+  maxUsers: integer("max_users").notNull(),
+  maxAlertRules: integer("max_alert_rules").notNull(),
+  monthlyPrice: integer("monthly_price").notNull(), // in cents
+  features: jsonb("features").default({}),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Organization Plans (Subscriptions)
+export const organizationPlans = pgTable("organization_plans", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  organizationId: varchar("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }).unique(),
+  planId: uuid("plan_id").notNull().references(() => subscriptionPlans.id),
+  status: text("status").notNull().default("active"), // active, suspended, canceled
+  currentPeriodStart: timestamp("current_period_start").defaultNow().notNull(),
+  currentPeriodEnd: timestamp("current_period_end"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const organizationPlansRelations = relations(organizationPlans, ({ one }) => ({
+  organization: one(organizations, {
+    fields: [organizationPlans.organizationId],
+    references: [organizations.id],
+  }),
+  plan: one(subscriptionPlans, {
+    fields: [organizationPlans.planId],
+    references: [subscriptionPlans.id],
+  }),
+}));
+
+// Audit Logs - track all admin actions
+export const auditLogs = pgTable("audit_logs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  adminUserId: uuid("admin_user_id").references(() => adminUsers.id, { onDelete: "set null" }),
+  action: text("action").notNull(), // suspend_org, reactivate_org, impersonate_org, update_plan, etc
+  resource: text("resource").notNull(), // organization, admin_user, etc
+  resourceId: text("resource_id"), // ID of the affected resource
+  organizationId: varchar("organization_id").references(() => organizations.id, { onDelete: "set null" }),
+  changes: jsonb("changes").default({}), // before/after values
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  adminUser: one(adminUsers, {
+    fields: [auditLogs.adminUserId],
+    references: [adminUsers.id],
+  }),
+  organization: one(organizations, {
+    fields: [auditLogs.organizationId],
+    references: [organizations.id],
+  }),
+}));
 
 // Organizations (Tenants)
 export const organizations = pgTable("organizations", {
@@ -157,6 +255,36 @@ export const alertsRelations = relations(alerts, ({ one }) => ({
 }));
 
 // Insert schemas
+export const insertAdminUserSchema = createInsertSchema(adminUsers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastLoginAt: true,
+  mfaSecret: true,
+});
+
+export const insertAdminSessionSchema = createInsertSchema(adminSessions).omit({
+  id: true,
+  createdAt: true,
+  revokedAt: true,
+});
+
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertOrganizationPlanSchema = createInsertSchema(organizationPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertOrganizationSchema = createInsertSchema(organizations).omit({
   id: true,
   createdAt: true,
@@ -197,6 +325,21 @@ export const insertAlertSchema = createInsertSchema(alerts).omit({
 });
 
 // Types
+export type AdminUser = typeof adminUsers.$inferSelect;
+export type InsertAdminUser = z.infer<typeof insertAdminUserSchema>;
+
+export type AdminSession = typeof adminSessions.$inferSelect;
+export type InsertAdminSession = z.infer<typeof insertAdminSessionSchema>;
+
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+
+export type OrganizationPlan = typeof organizationPlans.$inferSelect;
+export type InsertOrganizationPlan = z.infer<typeof insertOrganizationPlanSchema>;
+
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
+
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 
