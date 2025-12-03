@@ -106,7 +106,9 @@ export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+  status: text("status").notNull().default("active"), // active, suspended, deactivated
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const organizationsRelations = relations(organizations, ({ many }) => ({
@@ -125,6 +127,7 @@ export const organizationUsers = pgTable("organization_users", {
   firstName: text("first_name"),
   lastName: text("last_name"),
   role: text("role").notNull().default("member"), // owner, admin, member, viewer
+  status: text("status").notNull().default("active"), // active, deactivated
   emailVerified: boolean("email_verified").default(false),
   lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
