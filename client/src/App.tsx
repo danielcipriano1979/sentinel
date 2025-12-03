@@ -28,6 +28,7 @@ import { AdminTenantUsersPage } from "@/pages/admin-tenant-users";
 import { AdminTenantSettingsPage } from "@/pages/admin-tenant-settings";
 import { AdminTenantBillingPage } from "@/pages/admin-tenant-billing";
 import { LoginPage } from "@/pages/login";
+import { UnifiedLoginPage } from "@/pages/unified-login";
 import { RegisterPage } from "@/pages/register";
 import { InvitePage } from "@/pages/invite";
 import { OrganizationMembersPage } from "@/pages/organization-members";
@@ -39,7 +40,8 @@ function Router() {
   return (
     <Switch>
       {/* User Auth Routes (public) */}
-      <Route path="/login" component={LoginPage} />
+      <Route path="/login" component={UnifiedLoginPage} />
+      <Route path="/legacy-login" component={LoginPage} />
       <Route path="/register" component={RegisterPage} />
       <Route path="/invite/:token">
         {(params) => <InvitePage params={params} />}

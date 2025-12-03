@@ -119,6 +119,7 @@ export interface IStorage {
 
   // Organization Users
   getOrganizationUsers(organizationId: string): Promise<any[]>;
+  getUserOrganizations(email: string): Promise<any[]>;
   createOrganizationUser(organizationId: string, email: string, passwordHash: string, role: string, firstName?: string, lastName?: string): Promise<any>;
   updateOrganizationUser(userId: string, organizationId: string, updates: { role?: string; status?: string }): Promise<any | undefined>;
   updateOrganizationUserRole(userId: string, organizationId: string, role: string): Promise<any | undefined>;
@@ -636,6 +637,21 @@ export class DatabaseStorage implements IStorage {
     const { organizationUsers } = await import("@shared/schema");
     const { eq } = await import("drizzle-orm");
     return db.select().from(organizationUsers).where(eq(organizationUsers.organizationId, organizationId));
+  }
+
+  async getUserOrganizations(email: string): Promise<any[]> {
+    const { organizationUsers, organizations } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    const results = await db
+      .select({
+        id: organizations.id,
+        name: organizations.name,
+        slug: organizations.slug,
+      })
+      .from(organizationUsers)
+      .innerJoin(organizations, eq(organizationUsers.organizationId, organizations.id))
+      .where(eq(organizationUsers.email, email));
+    return results;
   }
 
   async createOrganizationUser(
