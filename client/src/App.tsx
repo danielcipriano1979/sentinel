@@ -17,6 +17,7 @@ import Agents from "@/pages/agents";
 import Alerts from "@/pages/alerts";
 import Roadmap from "@/pages/roadmap";
 import Settings from "@/pages/settings";
+import UserProfilePage from "@/pages/user-profile";
 import { AdminLoginPage } from "@/pages/admin-login";
 import { AdminRegisterPage } from "@/pages/admin-register";
 import { AdminDashboardPage } from "@/pages/admin-dashboard";
@@ -93,6 +94,11 @@ function Router() {
       <Route path="/settings">
         <ProtectedRoute>
           <Settings />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/profile">
+        <ProtectedRoute>
+          <UserProfilePage />
         </ProtectedRoute>
       </Route>
       <Route path="/organization-members">
