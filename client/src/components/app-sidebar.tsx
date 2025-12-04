@@ -61,11 +61,7 @@ const secondaryNavItems = [
   },
 ];
 
-interface AppSidebarProps {
-  onAddOrganization?: () => void;
-}
-
-export function AppSidebar({ onAddOrganization }: AppSidebarProps) {
+export function AppSidebar() {
   const [location] = useLocation();
 
   const isActive = (url: string) => {
@@ -85,7 +81,7 @@ export function AppSidebar({ onAddOrganization }: AppSidebarProps) {
             <span className="text-xs text-muted-foreground">Monitoring</span>
           </div>
         </div>
-        <OrganizationSwitcher onAddOrganization={onAddOrganization} />
+        <OrganizationSwitcher />
       </SidebarHeader>
 
       <SidebarSeparator />
