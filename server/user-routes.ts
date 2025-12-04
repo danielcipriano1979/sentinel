@@ -181,7 +181,12 @@ export async function registerUserRoutes(app: Express): Promise<void> {
       }
 
       if (userOrganizations && userOrganizations.length > 0) {
-        // User exists in at least one organization - login to the first one
+        // User should only exist in ONE organization (account isolation)
+        // But we handle multiple just in case of legacy data
+        if (userOrganizations.length > 1) {
+          console.warn(`Warning: User ${email} found in multiple organizations:`, userOrganizations.map(org => org.id));
+        }
+
         const org = userOrganizations[0];
         try {
           const { user, token } = await UserAuthService.login(
@@ -189,6 +194,11 @@ export async function registerUserRoutes(app: Express): Promise<void> {
             email,
             password
           );
+
+          // Verify the user's organization ID matches the one we found
+          if (user.organizationId !== org.id) {
+            throw new Error("User organization mismatch - account integrity error");
+          }
 
           return res.json({
             user: {
@@ -217,7 +227,7 @@ export async function registerUserRoutes(app: Express): Promise<void> {
         return res.json({
           email: email,
           status: "no_tenant",
-          message: "User has no organization. Please create or request an organization.",
+          message: "User has no organization. Please create a new organization.",
         });
       }
     } catch (error: any) {

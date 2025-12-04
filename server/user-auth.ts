@@ -75,7 +75,7 @@ export class UserAuthService {
     organization: { id: string; name: string; slug: string };
     token: string;
   }> {
-    // Check if slug already exists
+    // Check if organization slug already exists
     const existingOrg = await db
       .select()
       .from(organizations)
@@ -83,6 +83,17 @@ export class UserAuthService {
 
     if (existingOrg.length > 0) {
       throw new Error("Organization slug already exists");
+    }
+
+    // Check if user email is already registered in ANY organization
+    // This ensures proper account isolation - one email can only belong to one organization
+    const existingUsers = await db
+      .select()
+      .from(organizationUsers)
+      .where(eq(organizationUsers.email, email));
+
+    if (existingUsers.length > 0) {
+      throw new Error("Email is already registered. Please log in or use a different email.");
     }
 
     // Create organization
@@ -94,10 +105,14 @@ export class UserAuthService {
       })
       .returning();
 
+    if (!org) {
+      throw new Error("Failed to create organization");
+    }
+
     // Hash password
     const passwordHash = await this.hashPassword(password);
 
-    // Create user as owner
+    // Create user as owner in the new organization
     const [user] = await db
       .insert(organizationUsers)
       .values({
@@ -111,10 +126,19 @@ export class UserAuthService {
       })
       .returning();
 
-    // Generate token
+    if (!user) {
+      throw new Error("Failed to create user account");
+    }
+
+    // Verify user was created in the correct organization
+    if (user.organizationId !== org.id) {
+      throw new Error("User organization mismatch - account integrity check failed");
+    }
+
+    // Generate token with correct organization ID
     const token = this.generateToken({
       userId: user.id,
-      organizationId: org.id,
+      organizationId: user.organizationId,
       email: user.email,
       role: user.role,
       firstName: user.firstName || undefined,
