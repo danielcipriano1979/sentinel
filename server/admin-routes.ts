@@ -1,6 +1,9 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { AdminAuthService } from "./admin-auth";
 import { storage } from "./storage";
+import { db } from "./db";
+import { organizations } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 // Middleware to verify admin token
@@ -417,6 +420,67 @@ export async function registerAdminRoutes(app: Express): Promise<void> {
     } catch (error) {
       console.error("Error updating plan:", error);
       res.status(500).json({ error: "Failed to update plan" });
+    }
+  });
+
+  /**
+   * Delete a tenant and all associated data
+   * DELETE /api/admin/tenants/:id
+   * This operation cascades to delete all related data
+   */
+  app.delete("/api/admin/tenants/:id", verifyAdminToken, async (req, res) => {
+    try {
+      const tenantId = req.params.id;
+      const adminId = (req as any).admin.adminUserId;
+
+      // Verify tenant exists
+      const org = await storage.getOrganization(tenantId);
+      if (!org) {
+        return res.status(404).json({ error: "Tenant not found" });
+      }
+
+      // Record the tenant details before deletion for audit log
+      const tenantDetails = {
+        id: org.id,
+        name: org.name,
+        slug: org.slug,
+        status: org.status,
+      };
+
+      // Delete the organization - all cascading deletes will be handled by the database
+      // Due to cascade delete constraints defined in the schema:
+      // - hosts table: { onDelete: "cascade" } -> deletes all hosts and their agents
+      // - agents table: { onDelete: "cascade" } (via hosts)
+      // - organizationUsers table: { onDelete: "cascade" }
+      // - organizationSessions table: { onDelete: "cascade" } (via users)
+      // - userInvitations table: { onDelete: "cascade" }
+      // - customFieldDefinitions table: { onDelete: "cascade" }
+      // - alertRules table: { onDelete: "cascade" }
+      // - alerts table: { onDelete: "cascade" } (via alertRules and hosts)
+      // - notificationChannels table: { onDelete: "cascade" }
+      // - organizationPlans table: { onDelete: "cascade" }
+      // - auditLogs with organizationId: { onDelete: "set null" } (preserves audit trail)
+      await db.delete(organizations).where(eq(organizations.id, tenantId));
+
+      // Log audit event for tenant deletion
+      await storage.createAuditLog({
+        adminUserId: adminId,
+        action: "delete_organization",
+        resource: "organization",
+        resourceId: tenantId,
+        changes: { deleted: true, organization: tenantDetails },
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
+
+      res.json({
+        success: true,
+        message: "Tenant and all associated data deleted successfully",
+        deletedTenant: tenantDetails,
+      });
+    } catch (error) {
+      console.error("Error deleting tenant:", error);
+      res.status(500).json({ error: "Failed to delete tenant" });
     }
   });
 
