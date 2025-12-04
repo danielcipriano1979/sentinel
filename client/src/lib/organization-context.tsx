@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { useUser } from "@/hooks/useUser";
 import type { Organization } from "@shared/schema";
 
 type OrganizationContextType = {
@@ -12,24 +13,22 @@ type OrganizationContextType = {
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
 export function OrganizationProvider({ children }: { children: React.ReactNode }) {
+  const { organization } = useUser();
   const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Sync organization from UserContext to OrganizationContext
   useEffect(() => {
-    const savedOrgId = localStorage.getItem("sentinel-current-org");
-    if (savedOrgId && organizations.length > 0) {
-      const org = organizations.find(o => o.id === savedOrgId);
-      if (org) {
-        setCurrentOrg(org);
-      } else if (organizations.length > 0) {
-        setCurrentOrg(organizations[0]);
-      }
-    } else if (organizations.length > 0 && !currentOrg) {
-      setCurrentOrg(organizations[0]);
+    if (organization) {
+      setCurrentOrg(organization);
+      setOrganizations([organization]); // Only one organization per user
+    } else {
+      setCurrentOrg(null);
+      setOrganizations([]);
     }
     setIsLoading(false);
-  }, [organizations]);
+  }, [organization]);
 
   const handleSetCurrentOrg = (org: Organization) => {
     setCurrentOrg(org);
